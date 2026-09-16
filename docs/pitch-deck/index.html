@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sauti Salama · Pitch deck</title>
+<style>
+  @page { size: 1280px 720px; margin: 0 }
+  :root { --plum: #5B2A86; --plum-dark: #3E1C5C; --plum-soft: #F1EAF8; --ink: #151A22; --ink-2: #4A5260; --ink-3: #6E7683; --bg: #F7F6F9; --line: #E2DEE8; --red: #C0271B; --red-soft: #FDEDEB; --amber: #A55C00; --amber-soft: #FFF5E0; --green: #0B7A4B; --green-soft: #E8F7EF }
+  * { box-sizing: border-box }
+  html, body { margin: 0; background: #2A2233 }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .slide { position: relative; width: 1280px; height: 720px; margin: 24px auto; padding: 64px 80px; background: var(--bg); overflow: hidden; page-break-after: always; break-after: page; display: flex; flex-direction: column }
+  @media print { html, body { background: var(--bg) } .slide { margin: 0 } }
+  .kicker { font-size: 18px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--plum) }
+  h1 { font-size: 64px; line-height: 1.05; letter-spacing: -.02em; margin: 14px 0 0; font-weight: 800 }
+  h2 { font-size: 46px; line-height: 1.1; letter-spacing: -.02em; margin: 12px 0 0; font-weight: 800; max-width: 1120px }
+  .lead { font-size: 24px; line-height: 1.45; color: var(--ink-2); margin: 18px 0 0; max-width: 900px }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 30px; display: flex; justify-content: space-between; font-size: 14px; color: var(--ink-3) }
+  .foot b { color: var(--plum); font-weight: 700 }
+  .grid { display: grid; gap: 22px; margin-top: 36px }
+  .g2 { grid-template-columns: 1fr 1fr } .g3 { grid-template-columns: repeat(3, 1fr) } .g4 { grid-template-columns: repeat(4, 1fr) }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 24px 26px }
+  .card h3 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.01em }
+  .card p, .card li { font-size: 18px; line-height: 1.45; color: var(--ink-2); margin: 0 }
+  .card ul { margin: 0; padding-left: 20px } .card li + li { margin-top: 6px }
+  .num { font-size: 72px; font-weight: 800; letter-spacing: -.03em; color: var(--plum); line-height: 1 }
+  .muted { color: var(--ink-3) }
+  .pill { display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 16px; font-weight: 700; background: var(--plum-soft); color: var(--plum) }
+  .pill.red { background: var(--red-soft); color: var(--red) } .pill.green { background: var(--green-soft); color: var(--green) } .pill.amber { background: var(--amber-soft); color: var(--amber) }
+  .x { color: var(--red); font-weight: 800 }
+
+  /* title */
+  .title { background: var(--plum); color: #fff; justify-content: center }
+  .title .kicker { color: #D9C4F0 }
+  .title h1 { font-size: 104px }
+  .title .lead { color: #E8DCF5; font-size: 30px }
+  .title .foot { color: #CDB8E6 } .title .foot b { color: #fff }
+  .mark { width: 92px; height: 92px; border-radius: 24px; background: #fff; display: grid; place-items: center; margin-bottom: 28px }
+  .big-quote { font-size: 58px; font-weight: 800; line-height: 1.12; letter-spacing: -.02em; max-width: 1050px; margin-top: 18px }
+  .big-quote em { font-style: normal; color: var(--plum) }
+
+  /* phone mockups */
+  .phone { width: 250px; background: #20252C; border-radius: 34px 34px 26px 26px; padding: 18px 16px; box-shadow: 0 24px 50px -20px rgba(30,20,40,.45) }
+  .lcd { background: #C9D8B6; border-radius: 8px; border: 4px solid #0F1215; padding: 12px; font: 15px/1.45 ui-monospace, Menlo, monospace; color: #1C2A12; white-space: pre-wrap; min-height: 210px }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 12px }
+  .keys span { background: #3A424D; color: #EEF0F3; border-radius: 9px; text-align: center; padding: 7px 0; font-weight: 700; font-size: 16px }
+  .keys span.hit { background: #7C4FB0 }
+  .flow { display: flex; align-items: center; gap: 22px; margin-top: 34px }
+  .arrow { font-size: 40px; color: var(--plum); font-weight: 800 }
+  .sms { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--plum); border-radius: 12px; padding: 14px 16px; font: 15px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; color: var(--ink) }
+
+  /* brief */
+  .raw { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 24px; font-size: 22px; line-height: 1.5 }
+  .raw .tag { font-size: 14px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px }
+  .brief { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px }
+  .brief dl { display: grid; grid-template-columns: 190px 1fr; gap: 10px 14px; margin: 14px 0 0; font-size: 18px }
+  .brief dt { color: var(--ink-3); font-weight: 600 } .brief dd { margin: 0; font-weight: 600 }
+  .floor { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--amber-soft); color: #6E3F00; font-size: 16px; line-height: 1.4 }
+
+  /* steps */
+  .steps { display: grid; gap: 12px; margin-top: 30px }
+  .step { display: grid; grid-template-columns: 54px 1fr auto; gap: 18px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px }
+  .step .n { width: 44px; height: 44px; border-radius: 50%; background: var(--plum-soft); color: var(--plum); display: grid; place-items: center; font-weight: 800; font-size: 20px }
+  .step b { font-size: 21px } .step span.d { display: block; font-size: 16px; color: var(--ink-2); margin-top: 2px }
+
+  /* tiers */
+  .tiers { display: grid; grid-template-columns: 1fr 70px 1fr 70px 1fr; align-items: stretch; margin-top: 40px }
+  .tiers .arrow { display: grid; place-items: center }
+  .tier { border-radius: 20px; padding: 26px; background: #fff; border: 1px solid var(--line) }
+  .tier.one { background: var(--plum); color: #fff; border: 0 } .tier.one p { color: #E8DCF5 }
+  .tier h3 { margin: 10px 0 8px; font-size: 26px } .tier p { margin: 0; font-size: 18px; line-height: 1.45; color: var(--ink-2) }
+  .tier .when { font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .8 }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide title">
+  <div class="mark"><svg width="60" height="60" viewBox="0 0 32 32"><path d="M9.5 9h13A2.5 2.5 0 0 1 25 11.5v7a2.5 2.5 0 0 1-2.5 2.5H16l-4.5 3.5V21h-2A2.5 2.5 0 0 1 7 18.5v-7A2.5 2.5 0 0 1 9.5 9z" fill="#5B2A86"/><path d="M12 15h.01M14.5 13v4M17 12v6M19.5 14v2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+  <div class="kicker">Safety, Reporting &amp; Protection</div>
+  <h1>Sauti Salama</h1>
+  <p class="lead">A GBV reporting and referral line for Kenya that works on any phone.<br>No internet. No app. Two key presses to reach a vetted neighbour.</p>
+  <div class="foot"><span><b>Benard Kimani</b> · Nairobi</span><span>OSF x Andela Hackathon 2026</span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h2>Violence at home is common. Reporting it is almost impossible.</h2>
+  <div class="grid g3">
+    <div class="card"><div class="num">40%+</div><p style="margin-top:12px">of ever-partnered Kenyan women aged 15–49 have experienced physical or sexual violence from a partner</p></div>
+    <div class="card"><div class="num">34%</div><p style="margin-top:12px">of women have experienced physical violence since age 15; 13–14% sexual violence</p></div>
+    <div class="card"><div class="num">72h</div><p style="margin-top:12px">window for free HIV prevention after rape, which most survivors never hear about in time</p></div>
+  </div>
+  <p class="lead" style="margin-top:34px">The barriers are practical: the abuser controls the phone, there is no airtime or data, no private moment, and nobody to call who can come quickly.</p>
+  <div class="foot"><span>Source: Kenya Demographic and Health Survey 2022 (KNBS)</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="kicker">What exists today</div>
+  <h2>Every channel assumes something the survivor does not have.</h2>
+  <div class="grid g3">
+    <div class="card"><h3>Helpline 1195</h3><p><span class="x">✕</span> You must speak out loud, with the abuser possibly in the next room.</p></div>
+    <div class="card"><h3>GBV apps</h3><p><span class="x">✕</span> Need a smartphone, a data bundle and a phone nobody checks.</p></div>
+    <div class="card"><h3>Police station</h3><p><span class="x">✕</span> Needs travel, money and a first contact that is often not survivor-centred.</p></div>
+  </div>
+  <p class="big-quote" style="font-size:40px;margin-top:44px">About one in three Kenyan phones is still a <em>feature phone</em>. The tools were built for the other two.</p>
+  <div class="foot"><span>Feature-phone share: Communications Authority of Kenya sector statistics</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="kicker">The idea</div>
+  <p class="big-quote">Any phone. No internet. No app.<br><em>Two key presses</em> to reach a vetted neighbour.</p>
+  <div class="grid g3" style="margin-top:46px">
+    <div class="card"><span class="pill">Call line</span><h3 style="margin-top:14px">Speak</h3><p>For low literacy and visual impairment. English or Kiswahili. Press 9 for a silent alert.</p></div>
+    <div class="card"><span class="pill">USSD *384*7262#</span><h3 style="margin-top:14px">Press</h3><p>For anyone who cannot speak. Silent, free, no data, nothing left in the call log or inbox.</p></div>
+    <div class="card"><span class="pill">SMS 7262</span><h3 style="margin-top:14px">Text</h3><p>English, Kiswahili or Sheng. HELP for information, STOP to erase everything.</p></div>
+  </div>
+  <div class="foot"><span>Built on Africa's Talking, the gateway Kenyan telcos already expose</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="kicker">How it works · the golden path</div>
+  <h2>From "I am in danger" to a responder on the way.</h2>
+  <div class="flow">
+    <div class="phone">
+      <div class="lcd">Sauti Salama - you are safe here.
+1. Report what happened
+<b>2. I am in danger NOW</b>
+3. Get help info
+4. Request a call back
+5. Case status
+6. Delete my report</div>
+      <div class="keys"><span>1</span><span class="hit">2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+    </div>
+    <div class="arrow">→</div>
+    <div style="display:grid;gap:14px;flex:1">
+      <div class="sms">SAUTI SALAMA ALERT [CRITICAL] SS-S6X6
+SILENT ALERT: the caller is in danger now
+Area: Dandora | Via: ussd silent
+Survivor phone: NOT SAFE - do not call or text
+Reply ACK SS-S6X6 to accept.</div>
+      <div class="grid g3" style="margin-top:0;gap:14px">
+        <div class="card" style="padding:16px 18px"><h3 style="font-size:19px">Seconds</h3><p style="font-size:16px">Vetted ward responder alerted by SMS</p></div>
+        <div class="card" style="padding:16px 18px"><h3 style="font-size:19px">ACK by SMS</h3><p style="font-size:16px">Console shows "Accepted in 2 min"</p></div>
+        <div class="card" style="padding:16px 18px"><h3 style="font-size:19px">Survivor in control</h3><p style="font-size:16px">Check status or erase, same free menu</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Running on the Africa's Talking sandbox: USSD *384*7262# and SMS 7262</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="kicker">The call line</div>
+  <h2>Talk if you can. Press 9 if you can't.</h2>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><div><b>Choose English or Kiswahili</b><span class="d">Natural recorded Kiswahili prompts replace robotic text-to-speech</span></div><span class="pill">Language</span></div>
+    <div class="step"><span class="n">2</span><div><b>Tell us what happened</b><span class="d">Up to 3 minutes; transcribed by Whisper large v3 in the background, the caller is never kept waiting</span></div><span class="pill">Record</span></div>
+    <div class="step"><span class="n">3</span><div><b>Hear your reference, answer one question</b><span class="d">"Is it safe to call or text this phone?" If not, nobody ever will</span></div><span class="pill green">Consent</span></div>
+    <div class="step"><span class="n">9</span><div><b>Silent alert, any time</b><span class="d">The call drops in a second, the log shows a short call, a responder is already paged</span></div><span class="pill red">Danger</span></div>
+  </div>
+  <div class="foot"><span>Live voice needs an Africa's Talking voice number; the demo uses the built-in simulator</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="kicker">AI structures · humans decide</div>
+  <h2>A panicked Sheng text becomes a brief a responder can act on.</h2>
+  <div class="grid g2" style="grid-template-columns: 1fr 1.25fr; align-items: start">
+    <div>
+      <div class="raw"><div class="tag">SMS received</div>"Manze msee wangu amenichapa vibaya sana leo. Ako na kisu na anasema ataniua nikitoka. Niko Umoja, watoto wako hapa."</div>
+      <div class="card" style="margin-top:18px"><ul>
+        <li><b>Groq</b> · open-weight gpt-oss-120b, strict JSON schema</li>
+        <li>Brief in <b>English and Kiswahili</b></li>
+        <li>The AI <b>never</b> writes to a survivor</li>
+      </ul></div>
+    </div>
+    <div class="brief">
+      <span class="pill red">Critical urgency</span> <span class="pill amber">Immediate danger</span>
+      <dl>
+        <dt>Violence</dt><dd>Physical</dd>
+        <dt>Person responsible</dt><dd>Intimate partner · with survivor now</dd>
+        <dt>Time since incident</dt><dd>About 6 hours</dd>
+        <dt>Risk flags</dt><dd>Weapon · Children present</dd>
+        <dt>Needs</dt><dd>Medical · Shelter · Legal · Counselling · Police (her choice)</dd>
+        <dt>Area</dt><dd>Umoja</dd>
+      </dl>
+      <div class="floor"><b>Safety rules under the AI:</b> keyword rules in English, Kiswahili and Sheng run first. The AI can raise urgency but never lower a danger signal, and the console shows every override.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Fields shown are the real rules-floor output for this message; the AI adds natural summaries</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="kicker">Clear next steps</div>
+  <h2>Every case leaves with the right step and the deadline that matters.</h2>
+  <div class="steps" style="margin-top:26px">
+    <div class="step"><span class="n">1</span><div><b>Health facility for free post-rape care</b><span class="d">HIV prevention (PEP) and the free PRC form (MOH 363); emergency contraception up to 120 hours</span></div><span class="pill red">Within 72 h</span></div>
+    <div class="step"><span class="n">2</span><div><b>Child protection</b><span class="d">Childline Kenya 116, free 24 hours; a Children's Officer is involved (Children Act 2022)</span></div><span class="pill amber">Mandatory</span></div>
+    <div class="step"><span class="n">3</span><div><b>Police Gender Desk and P3 form</b><span class="d">Medical care never depends on reporting</span></div><span class="pill">Survivor's choice</span></div>
+    <div class="step"><span class="n">4</span><div><b>Protection Order and free legal aid</b><span class="d">Protection Against Domestic Violence Act 2015 · FIDA Kenya</span></div><span class="pill">Legal</span></div>
+    <div class="step"><span class="n">5</span><div><b>Shelter and counselling</b><span class="d">Via 1195 and the GBV Recovery Centre; locations never published</span></div><span class="pill green">24 h</span></div>
+  </div>
+  <div class="foot"><span>Deterministic rules, bilingual, built on Kenya's own laws and forms</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="kicker">Shifting power to communities</div>
+  <h2>The first responder is a vetted neighbour, not a distant institution.</h2>
+  <div class="tiers">
+    <div class="tier one"><div class="when">Tier 1 · minutes</div><h3>Ward responders</h3><p>Community health promoters, peace committees, trained volunteers, vetted per ward</p></div>
+    <div class="arrow">→</div>
+    <div class="tier"><div class="when">No acceptance in 10 min</div><h3>Recovery Centre desk</h3><p>Automatic escalation to an institutional Tier 2 desk</p></div>
+    <div class="arrow">→</div>
+    <div class="tier"><div class="when">Only if she chooses</div><h3>Police</h3><p>Never the default. Reporting is the survivor's decision</p></div>
+  </div>
+  <p class="lead" style="margin-top:36px">Every case shows <b>time to accept</b>, so "timely support" is measured, not promised.</p>
+  <div class="foot"><span>Acknowledgement loop by SMS · escalation timer · audit trail</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="kicker">Privacy &amp; trust by design</div>
+  <h2>Built for the Kenya Data Protection Act 2019 from day one.</h2>
+  <div class="grid g2">
+    <div class="card"><h3>No registration, no ID</h3><p>Anonymity is the difference between a report and no report.</p></div>
+    <div class="card"><h3>Encrypted at rest</h3><p>Phone numbers and statements use AES-256-GCM; the console shows masked numbers.</p></div>
+    <div class="card"><h3>Consent before contact</h3><p>A number is revealed only if the survivor said the phone is safe, and every reveal is logged.</p></div>
+    <div class="card"><h3>Real erasure</h3><p>Erase everything from a free USSD session; closed cases purge after 90 days. Deliberately no blockchain.</p></div>
+  </div>
+  <p class="lead" style="font-size:20px;margin-top:22px">Abuse protection without ID checks: per-number rate limiting adds extra reports to the existing case, so a real emergency is never dropped.</p>
+  <div class="foot"><span>Trust · verification · privacy</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="kicker">Why it is worth developing</div>
+  <h2>Cheap to run, nothing new in anyone's hands, and it creates the data counties lack.</h2>
+  <div class="grid g3">
+    <div class="card"><div class="num" style="font-size:56px">KSh 0</div><p style="margin-top:12px">for the survivor. USSD and SMS cost cents per report; the AI costs a fraction of a cent.</p></div>
+    <div class="card"><div class="num" style="font-size:56px">0 MB</div><p style="margin-top:12px">of data needed on the survivor's side. Works on every phone in Kenya.</p></div>
+    <div class="card"><div class="num" style="font-size:56px">Ward</div><p style="margin-top:12px">level, anonymised patterns for county GBV working groups. Never a case.</p></div>
+  </div>
+  <div class="foot"><span>Multilingual · low bandwidth · accessible · locally relevant</span><span><b>Sauti Salama</b></span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide title">
+  <div class="kicker">Roadmap &amp; ask</div>
+  <h1 style="font-size:64px">A supervised pilot with the community that will run it.</h1>
+  <div class="grid g3" style="margin-top:34px">
+    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Pilot</h3><p style="color:#E8DCF5">Two Nairobi responder networks and one GBV Recovery Centre as the escalation desk</p></div>
+    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Measure</h3><p style="color:#E8DCF5">Time to accept and survivor-reported outcomes</p></div>
+    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Next</h3><p style="color:#E8DCF5">Live voice number, recorded Kiswahili prompts, three more languages, telco zero-rating</p></div>
+  </div>
+  <p class="lead" style="margin-top:34px">The code runs today on a KSh 0 phone. What it needs next is a community to run it with. <b style="color:#fff">Asante.</b></p>
+  <div class="foot"><span><b>github.com/swiftkimani/sauti-salama</b></span><span>Benard Kimani</span></div>
+</section>
+
+<script>
+  // index.html#3 shows only slide 3 (used to export single-slide images)
+  const m = location.hash.match(/^#(\d+)$/);
+  if (m) document.querySelectorAll('.slide').forEach((el, i) => { if (i + 1 !== Number(m[1])) el.remove(); else el.style.margin = '0'; });
+</script>
+</body>
+</html>

@@ -129,7 +129,7 @@ src/
   i18n/            every survivor-facing string, English + Kiswahili
   common/          AES-256-GCM crypto, phone masking, reference codes, SMS outbox
 public/            simulator.html, dashboard.html
-docs/              architecture, written summary, pitch deck, demo script, compliance, sprint plan, AI usage
+docs/              architecture, written summary, pitch deck (PDF + HTML source), demo script, compliance, Kiswahili voice prompts, AI usage
 test/              unit tests (triage rules, pathway engine)
 ```
 

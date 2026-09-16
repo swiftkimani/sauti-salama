@@ -1,6 +1,8 @@
 # Sauti Salama - pitch deck (12 slides)
 
-Build in Canva/Figma/PowerPoint. Palette: deep plum #5B2A86 (GBV awareness purple), off-white #F3F5F7, ink #17202A, urgency red #A61B1B. One idea per slide, big type, real screenshots from the simulator and console.
+**Built deck:** [`docs/Sauti-Salama-pitch-deck.pdf`](Sauti-Salama-pitch-deck.pdf) (source: [`docs/pitch-deck/index.html`](pitch-deck/index.html), open in a browser and print to PDF to re-export). The notes below are the speaker script.
+
+To rebuild elsewhere: Canva/Figma/PowerPoint. Palette: deep plum #5B2A86 (GBV awareness purple), off-white #F3F5F7, ink #17202A, urgency red #A61B1B. One idea per slide, big type, real screenshots from the simulator and console.
 
 ---
 
