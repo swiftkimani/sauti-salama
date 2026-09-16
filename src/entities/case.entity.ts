@@ -27,6 +27,8 @@ export class Case {
   @Column({ type: 'varchar', default: 'medium' }) urgency: string;
   @Column({ type: 'varchar', default: 'OPEN' }) status: CaseStatus;
   @Column({ type: 'varchar', nullable: true }) acknowledgedBy: string;
+  /** When a responder first accepted the case: the time-to-accept metric. */
+  @Column({ nullable: true }) acknowledgedAt: Date;
   @Column({ type: 'varchar', nullable: true }) callbackWindow: string;
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

@@ -24,6 +24,8 @@ export interface TriageResult {
   risk_flags: string[];
   confidence: number;
   provider: string;
+  /** Where the rules floor overrode the AI (shown to responders so the brief is explainable). */
+  safety_floor?: string[];
 }
 
 /** Facts already collected from menus (USSD / IVR keypad), so the AI does not have to guess them. */

@@ -9,8 +9,8 @@ flowchart TB
   GW -->|webhooks| B[Sauti Salama backend]
   B -->|SMS alerts| GW --> R
   B -->|SMS next steps<br/>only with consent| GW --> S
-  B --> AI[Claude API<br/>triage]
-  B --> STT[Whisper<br/>speech to text]
+  B --> AI[Groq gpt-oss-120b<br/>triage]
+  B --> STT[Groq Whisper large v3<br/>speech to text]
   D[Duty desk / GBV Recovery Centre] -->|console| B
 ```
 
@@ -23,8 +23,8 @@ Everything survivor-facing is delivered by the telco network (voice, USSD, SMS).
 | Voice IVR | Language menu, main menu, record report, urgent info, counsellor transfer / call-back, silent alert (9), consent | `src/channels/voice` |
 | USSD | `*384*7262#` state machine: report, danger now, info, call back, status, delete | `src/channels/ussd` |
 | SMS | Inbound keywords for survivors (HELP, YES, STOP) and responders (ACK, RESOLVE); free-text reports | `src/channels/sms` |
-| Transcription | Recording URL -> text (Whisper), mock in the simulator | `src/ai/transcription.service.ts` |
-| Triage | Rules floor + Claude JSON brief, validated and merged | `src/ai/rules.ts`, `src/ai/triage.service.ts`, `src/ai/prompts.ts` |
+| Transcription | Recording URL -> text (Whisper large v3 on Groq), mock in the simulator | `src/ai/transcription.service.ts` |
+| Triage | Rules floor + Groq JSON-schema brief (Claude optional), validated and merged, overrides recorded in `safety_floor` | `src/ai/rules.ts`, `src/ai/triage.service.ts`, `src/ai/prompts.ts` |
 | Referral engine | Triage -> ordered bilingual next steps + verified service per step | `src/cases/referral.service.ts` |
 | Notify | Tier-1 SMS to ward responders, escalation timer to Tier 2, survivor SMS only with consent | `src/cases/notify.service.ts` |
 | Case store | Encrypted case, audit events, retention purge, erasure | `src/cases/*`, `src/entities/*` |
@@ -41,8 +41,8 @@ sequenceDiagram
   participant S as Survivor
   participant AT as Africa's Talking
   participant B as Backend
-  participant W as Whisper
-  participant C as Claude
+  participant W as Groq Whisper
+  participant C as Groq LLM
   participant R as Tier-1 responder
   S->>AT: calls the line
   AT->>B: POST /webhooks/voice (isActive=1)
@@ -101,7 +101,7 @@ sequenceDiagram
   participant B as Backend
   participant R as Responder
   S->>B: "Naomba msaada, jana usiku nilibakwa na jirani hapa Kibra..."
-  B->>B: rules floor (sexual, 30h, Kibra, acquaintance) + Claude brief
+  B->>B: rules floor (sexual, 30h, Kibra, acquaintance) + Groq brief
   B->>R: ALERT [HIGH] ... Next: health facility within 72h (PEP)
   B-->>S: one neutral reply with reference; "Reply YES if it is safe to text this number"
   S->>B: YES

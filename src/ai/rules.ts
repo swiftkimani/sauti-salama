@@ -233,7 +233,7 @@ export function silentTriage(input: TriageInput): TriageResult {
 }
 
 /** Validate/clean the AI's JSON and apply the rules floor. */
-export function normalizeTriage(raw: any, input: TriageInput, floor: TriageResult): TriageResult {
+export function normalizeTriage(raw: any, input: TriageInput, floor: TriageResult, provider = 'anthropic'): TriageResult {
   const arr = (v: any, allowed?: readonly string[]) => (Array.isArray(v) ? v.map(String).filter((x) => !allowed || allowed.includes(x)) : []);
   const str = (v: any, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
   const urgency: Urgency = (['critical', 'high', 'medium', 'low'] as Urgency[]).includes(raw?.urgency) ? raw.urgency : floor.urgency;
@@ -241,7 +241,15 @@ export function normalizeTriage(raw: any, input: TriageInput, floor: TriageResul
   const finalUrgency: Urgency = URGENCY_RANK[urgency] >= URGENCY_RANK[floor.urgency] ? urgency : floor.urgency;
   const hours = typeof raw?.hours_since_incident === 'number' && raw.hours_since_incident >= 0 ? raw.hours_since_incident : floor.hours_since_incident;
   const flags = Array.from(new Set([...arr(raw?.risk_flags, RISK_FLAGS), ...floor.risk_flags]));
-  const types = Array.from(new Set([...arr(raw?.violence_types, VIOLENCE_TYPES), ...floor.violence_types]));
+  const aiTypes = arr(raw?.violence_types, VIOLENCE_TYPES);
+  const aiFlags = arr(raw?.risk_flags, RISK_FLAGS);
+  const types = Array.from(new Set([...aiTypes, ...floor.violence_types]));
+  const safetyFloor: string[] = [];
+  if (floor.immediate_danger && !raw?.immediate_danger) safetyFloor.push('Immediate danger kept: the rules detected it and the AI did not');
+  if (URGENCY_RANK[urgency] < URGENCY_RANK[floor.urgency]) safetyFloor.push(`Urgency kept at ${floor.urgency} (AI suggested ${urgency})`);
+  else if (immediate && urgency !== 'critical') safetyFloor.push(`Urgency raised to critical because of immediate danger (AI suggested ${urgency})`);
+  for (const f of floor.risk_flags) if (!aiFlags.includes(f)) safetyFloor.push(`Risk flag kept: ${f.replace(/_/g, ' ')}`);
+  for (const t of floor.violence_types) if (!aiTypes.includes(t)) safetyFloor.push(`Violence type kept: ${t.replace(/_/g, ' ')}`);
   return {
     violence_types: types,
     urgency: immediate ? 'critical' : finalUrgency,
@@ -257,6 +265,7 @@ export function normalizeTriage(raw: any, input: TriageInput, floor: TriageResul
     summary_sw: str(raw?.summary_sw) || floor.summary_sw,
     risk_flags: flags,
     confidence: typeof raw?.confidence === 'number' ? Math.max(0, Math.min(1, raw.confidence)) : floor.confidence,
-    provider: 'anthropic+rules',
+    provider: `${provider}+rules`,
+    safety_floor: safetyFloor,
   };
 }

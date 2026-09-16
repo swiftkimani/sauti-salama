@@ -32,7 +32,7 @@ Visual: IVR transcript from the simulator; the "9" key highlighted.
 
 **7. AI structures, humans decide**
 Visual: raw Kiswahili/Sheng SMS on the left -> structured brief on the right (type, urgency, 72h flag, risk flags, EN+SW summary).
-*Say:* "Claude turns the report into a responder brief in both languages. A rules-based floor runs underneath: the AI can raise urgency, it can never lower a danger signal, and the line works with no AI at all. The AI never writes a word a survivor sees."
+*Say:* "An open-weight model on Groq turns the report into a responder brief in both languages within seconds, forced into a strict schema. A rules-based floor runs underneath: the AI can raise urgency, it can never lower a danger signal, and the console shows exactly where the rules overrode it. The line works with no AI at all, and the AI never writes a word a survivor sees."
 
 **8. Right next step, right deadline**
 Visual: the console's next-step checklist: 72h PEP / 120h EC + PRC form, P3 form + Gender Desk, Protection Order (PADVA 2015), FIDA, Childline 116, shelter via 1195.
@@ -51,5 +51,5 @@ Visual: ward-level heat map mock (aggregate counts only).
 *Say:* "County GBV working groups get anonymised ward-level patterns - never a case. That is the accountability layer."
 
 **12. Roadmap and ask**
-Pilot: two Nairobi responder networks + one GBV Recovery Centre; metric: time-to-acknowledge and survivor-reported outcomes. Then pre-recorded Kiswahili prompts and three more languages, telco zero-rating, WhatsApp, responder accounts.
+Pilot: two Nairobi responder networks + one GBV Recovery Centre; metric: time-to-accept (already measured in the console) and survivor-reported outcomes. Then recorded Kiswahili prompts and three more languages, a live voice number, telco zero-rating, WhatsApp, responder accounts.
 *Say:* "The code runs today on a KSh 0 phone. What it needs next is a community to run it with. Asante."

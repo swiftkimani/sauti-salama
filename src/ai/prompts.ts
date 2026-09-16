@@ -1,4 +1,4 @@
-import { TriageInput } from './triage.types';
+import { NEEDS, RELATIONSHIPS, RISK_FLAGS, TriageInput, VIOLENCE_TYPES } from './triage.types';
 
 export const TRIAGE_SYSTEM_PROMPT = `You are the triage assistant inside Sauti Salama, a gender-based violence (GBV) reporting line in Kenya. You read ONE report from a survivor, or from someone reporting on their behalf, written in English, Kiswahili, Sheng or a mix, and you turn it into a structured JSON object for a trained human responder. You do not talk to the survivor. You never give advice, judgement or instructions.
 
@@ -31,6 +31,29 @@ JSON schema (all keys required):
 }
 
 Urgency guide: critical = immediate danger now; high = sexual violence within 72h, child survivor, weapon or strangulation; medium = other physical or sexual violence that is not time-critical; low = emotional, economic or harassment with no danger signals.`;
+
+/** The same contract as a JSON Schema, for providers with constrained (strict) decoding such as Groq. */
+export const TRIAGE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['violence_types', 'urgency', 'immediate_danger', 'perpetrator_present', 'perpetrator_relationship', 'survivor_age_group', 'hours_since_incident', 'location_mentions', 'needs', 'language_detected', 'summary_en', 'summary_sw', 'risk_flags', 'confidence'],
+  properties: {
+    violence_types: { type: 'array', items: { type: 'string', enum: [...VIOLENCE_TYPES] } },
+    urgency: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+    immediate_danger: { type: 'boolean' },
+    perpetrator_present: { type: ['boolean', 'null'] },
+    perpetrator_relationship: { type: 'string', enum: [...RELATIONSHIPS] },
+    survivor_age_group: { type: 'string', enum: ['child', 'adult', 'unknown'] },
+    hours_since_incident: { type: ['number', 'null'] },
+    location_mentions: { type: 'array', items: { type: 'string' } },
+    needs: { type: 'array', items: { type: 'string', enum: [...NEEDS] } },
+    language_detected: { type: 'string', enum: ['en', 'sw', 'sheng', 'mixed'] },
+    summary_en: { type: 'string' },
+    summary_sw: { type: 'string' },
+    risk_flags: { type: 'array', items: { type: 'string', enum: [...RISK_FLAGS] } },
+    confidence: { type: 'number' },
+  },
+};
 
 export function buildTriageUserMessage(input: TriageInput): string {
   return [

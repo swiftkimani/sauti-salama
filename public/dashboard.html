@@ -69,6 +69,10 @@
   .confidence { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3) }
   .meter { width: 64px; height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden }
   .meter > span { display: block; height: 100%; background: var(--brand) }
+  .floor { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--medium-bg); border: 1px solid var(--medium-line); color: #7A4105; font-size: 13.5px }
+  .floor.ok { display: flex; gap: 8px; align-items: center; background: var(--ok-bg); border-color: var(--ok-line); color: #074D31 }
+  .floor-head { display: flex; gap: 8px; align-items: center }
+  .floor ul { margin: 6px 0 0; padding-left: 30px }
   .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px 20px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line) }
   .facts dt { font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em }
   .facts dd { margin: 5px 0 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center }
@@ -231,13 +235,14 @@ const CHANNEL = {
   ussd: ['USSD', 'grid'], ussd_silent: ['USSD · silent alert', 'grid'], sms: ['SMS', 'message'],
 };
 const LANG = { en: 'English', sw: 'Kiswahili' };
-const PROVIDER = { rules: 'Rules engine', structured: 'Menu answers', silent: 'Silent alert', 'anthropic+rules': 'Claude AI + rules', simulator: 'Simulator', mock: 'Sample transcript', 'openai-whisper': 'Whisper', system: 'System', survivor: 'Survivor' };
+const PROVIDER = { rules: 'Rules engine', structured: 'Menu answers', silent: 'Silent alert', 'groq+rules': 'Groq AI + safety rules', 'anthropic+rules': 'Claude AI + safety rules', simulator: 'Simulator', mock: 'Sample transcript', 'groq-whisper': 'Groq Whisper', 'openai-whisper': 'OpenAI Whisper', system: 'System', survivor: 'Survivor' };
 const EVENTS = {
   CREATED: ['Report received', 'brand'], TRANSCRIBED: ['Recording transcribed', 'brand'], TRIAGED: ['Triaged', 'brand'],
   TRIAGE_FAILED: ['Triage failed', 'danger'], NOTIFIED_TIER1: ['Community responders alerted', 'brand'],
   SURVIVOR_SMS: ['Next steps texted to survivor', 'brand'], CONSENT: ['Contact preference recorded', 'brand'],
   ACCESSED: ['Case opened', 'muted'], ACKNOWLEDGED: ['Case accepted', 'ok'], ESCALATED: ['Escalated to Tier 2 desk', 'danger'],
   CONTACT_REVEALED: ['Phone number revealed', 'warn'], RESOLVED: ['Closed as resolved', 'ok'], FALSE_ALARM: ['Closed as false alarm', 'muted'],
+  FOLLOW_UP: ['Follow-up from the same phone', 'warn'],
 };
 const DEFAULT_ACTOR = 'Amina W. (CHP)';
 const TITLE = 'Responder console · Sauti Salama';
@@ -247,6 +252,11 @@ const actorLabel = (a) => PROVIDER[a] || (CHANNEL[a] ? CHANNEL[a][0] : a || '');
 const initials = (name) => String(name || '?').replace(/\(.*?\)/g, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
 const isClosed = (c) => CLOSED.includes(c.status);
 const sig = (c) => `${c.status}|${c.urgency}|${c.updatedAt}|${c.safeToContact}`;
+function acceptMinutes(c) {
+  if (!c.acknowledgedAt) return null;
+  return Math.max(0, Math.round((new Date(c.acknowledgedAt) - new Date(c.createdAt)) / 60000));
+}
+const minutesText = (m) => (m < 1 ? 'under a minute' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`);
 function hoursText(h) {
   if (h == null) return 'Not stated';
   if (h < 1) return 'Under 1 hour';
@@ -314,6 +324,7 @@ async function refresh() {
     trackNew(cases);
     state.cases = cases;
     renderQueue();
+    renderFoot();
     syncDetail();
   } catch (e) {
     if (e.status === 401) return showSignin('Your access token was not accepted. Please sign in again.');
@@ -451,9 +462,20 @@ function caseCard(c) {
   return `<a class="case-card u-${esc(c.urgency)}${closed ? ' is-closed' : ''}${fresh ? ' is-new' : ''}" href="#/case/${esc(c.ref)}" data-ref="${esc(c.ref)}"${c.ref === state.selected ? ' aria-current="true"' : ''}>
     <div class="cc-top"><span class="cc-ref">${esc(c.ref)}</span><span class="badge urgency">${esc(URGENCY[c.urgency] || titleCase(c.urgency))}</span>${fresh ? '<span class="badge tone-brand plain">New</span>' : ''}<span class="cc-time" title="${esc(dateTime(c.createdAt))}">${ago(c.createdAt)}</span></div>
     <p class="cc-summary">${esc(summary)}</p>
-    <div class="cc-meta"><span class="badge tone-${statusTone}">${esc(statusLabel)}</span><span>${icon(chIcon, 'sm')}${esc(chLabel)}</span><span>${icon('pin', 'sm')}${esc(c.ward || 'Area not stated')}</span></div>
+    <div class="cc-meta"><span class="badge tone-${statusTone}">${esc(statusLabel)}${acceptMinutes(c) != null && c.status === 'ACKNOWLEDGED' ? ` in ${esc(minutesText(acceptMinutes(c)))}` : ''}</span><span>${icon(chIcon, 'sm')}${esc(chLabel)}</span><span>${icon('pin', 'sm')}${esc(c.ward || 'Area not stated')}</span></div>
     ${flags.length ? `<div class="cc-flags">${flags.join('')}</div>` : ''}
   </a>`;
+}
+
+function renderFoot() {
+  const h = state.health;
+  const week = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const times = state.cases.filter((c) => new Date(c.createdAt) > week).map(acceptMinutes).filter((m) => m != null).sort((a, b) => a - b);
+  const median = times.length ? times[Math.floor((times.length - 1) / 2)] : null;
+  $('queueFoot').innerHTML = [
+    median != null ? `<span title="Median time from report to a responder accepting, last 7 days (${times.length} cases)">${icon('clock', 'sm')}Median time to accept: ${esc(minutesText(median))}</span>` : '',
+    h ? `<span>${icon('trash', 'sm')}Erased on request: ${esc(h.erased)}</span>` : '',
+  ].join('');
 }
 
 function renderQueueError() {
@@ -472,9 +494,9 @@ function renderSystem() {
   const h = state.health;
   $('demoBadge').hidden = !(h && h.sms === 'console');
   if (!h) return;
-  $('queueFoot').innerHTML = `<span>${icon('shield', 'sm')}Kept ${esc(h.retentionDays)} days</span><span>${icon('trash', 'sm')}Erased on request: ${esc(h.erased)}</span>`;
-  const ai = { anthropic: 'Claude AI with rules floor', rules: 'Rules engine (offline)' }[h.ai] || h.ai;
-  const tr = { openai: 'Whisper', mock: 'Simulated' }[h.transcription] || h.transcription;
+  renderFoot();
+  const ai = { groq: `Groq ${h.aiModel || ''} + safety rules`, anthropic: `Claude ${h.aiModel || ''} + safety rules`, rules: 'Rules engine (offline)' }[h.ai] || h.ai;
+  const tr = { groq: `Groq ${h.transcriptionModel || 'Whisper'}`, openai: `OpenAI ${h.transcriptionModel || 'Whisper'}`, mock: 'Simulated' }[h.transcription] || h.transcription;
   const sms = { console: 'Not sent (log only)', sandbox: "Africa's Talking sandbox", live: "Africa's Talking" }[h.sms] || h.sms;
   const conn = (state.online ? 'Live' : state.online === false ? 'Reconnecting' : 'Connecting') + (state.lastOk ? ` · ${time(state.lastOk)}` : '');
   $('sysList').innerHTML = [
@@ -578,7 +600,7 @@ function detailHtml() {
   return `${backLink()}
   <div class="dh">
     <div>
-      <div class="dh-title"><h2>${esc(d.ref)}</h2><span class="badge urgency u-${esc(d.urgency)}">${esc(URGENCY[d.urgency] || titleCase(d.urgency))} urgency</span><span class="badge tone-${statusTone}">${esc(statusLabel)}${d.status === 'ACKNOWLEDGED' && d.acknowledgedBy ? ` by ${esc(d.acknowledgedBy)}` : ''}</span></div>
+      <div class="dh-title"><h2>${esc(d.ref)}</h2><span class="badge urgency u-${esc(d.urgency)}">${esc(URGENCY[d.urgency] || titleCase(d.urgency))} urgency</span><span class="badge tone-${statusTone}">${esc(statusLabel)}${d.status === 'ACKNOWLEDGED' && d.acknowledgedBy ? ` by ${esc(d.acknowledgedBy)}` : ''}${d.status === 'ACKNOWLEDGED' && acceptMinutes(d) != null ? ` in ${esc(minutesText(acceptMinutes(d)))}` : ''}</span></div>
       <div class="dh-meta">
         <span title="${esc(dateTime(d.createdAt))}">${icon('clock', 'sm')}Received ${ago(d.createdAt)} · ${esc(dateTime(d.createdAt))}</span>
         <span>${icon(chIcon, 'sm')}${esc(chLabel)}</span>
@@ -597,6 +619,7 @@ function detailHtml() {
         <div class="card-body">
           <p class="summary-en">${esc(t.summary_en || 'No summary available yet.')}</p>
           ${t.summary_sw ? `<p class="summary-sw" lang="sw"><span class="lang-tag">SW</span><span>${esc(t.summary_sw)}</span></p>` : ''}
+          ${safetyFloorHtml(t)}
           <dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
         </div>
       </section>
@@ -642,6 +665,13 @@ function detailHtml() {
       </section>
     </div>
   </div>`;
+}
+
+function safetyFloorHtml(t) {
+  if (!String(t.provider || '').endsWith('+rules')) return '';
+  const notes = t.safety_floor || [];
+  if (!notes.length) return `<p class="floor ok">${icon('shieldCheck', 'sm')}<span>The AI brief and the safety rules agree.</span></p>`;
+  return `<div class="floor"><div class="floor-head">${icon('shield', 'sm')}<b>Safety rules overrode the AI</b></div><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
 }
 
 function timeline(events) {

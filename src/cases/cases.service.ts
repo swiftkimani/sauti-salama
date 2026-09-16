@@ -3,9 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TranscriptionService } from '../ai/transcription.service';
 import { TriageService } from '../ai/triage.service';
-import { Lang, TriageHints, TriageResult } from '../ai/triage.types';
+import { Lang, TriageHints, TriageResult, URGENCY_RANK, Urgency } from '../ai/triage.types';
 import { CryptoService } from '../common/crypto.service';
 import { maskPhone, normalizePhone } from '../common/phone';
+import { RateLimiter } from '../common/rate-limiter';
 import { genRef } from '../common/ref';
 import { SmsService } from '../common/sms.service';
 import { Case } from '../entities/case.entity';
@@ -31,14 +32,18 @@ export interface CreateCaseInput {
 export interface CaseView {
   id: string; ref: string; channel: string; language: string; phoneMasked: string;
   safeToContact: boolean; consentSharePolice: boolean; ward: string; triage: TriageResult;
-  pathway: Case['pathway']; urgency: string; status: string; acknowledgedBy: string;
+  pathway: Case['pathway']; urgency: string; status: string; acknowledgedBy: string; acknowledgedAt: Date;
   callbackWindow: string; createdAt: Date; updatedAt: Date;
 }
+
+const CLOSED = ['RESOLVED', 'FALSE_ALARM'];
 
 @Injectable()
 export class CasesService {
   private readonly logger = new Logger(CasesService.name);
   erasedCount = 0;
+  /** New cases per phone per hour. Beyond this, reports are attached to that phone's latest case instead of opening new ones. */
+  private readonly reportLimiter = new RateLimiter(() => Number(process.env.RATE_LIMIT_REPORTS_PER_HOUR ?? 3), () => 60 * 60 * 1000);
 
   constructor(
     @InjectRepository(Case) private readonly cases: Repository<Case>,
@@ -55,6 +60,8 @@ export class CasesService {
 
   /** USSD / SMS / silent alerts: triage now, notify, return the case with its reference. */
   async createCase(input: CreateCaseInput): Promise<Case> {
+    const existing = await this.overReportLimit(input.phone);
+    if (existing) return this.addFollowUp(existing, input);
     const c = this.cases.create({
       ref: await this.newRef(),
       channel: input.channel,
@@ -85,6 +92,8 @@ export class CasesService {
 
   /** Voice line: give the caller a reference immediately, process the recording in the background. */
   async createPending(input: { channel: string; language: Lang; phone?: string; hints?: TriageHints }): Promise<Case> {
+    const existing = await this.overReportLimit(input.phone);
+    if (existing) return existing; // processRecording() attaches the recording to it as a follow-up
     const c = this.cases.create({ ref: await this.newRef(), channel: input.channel, language: input.language, status: 'PROCESSING', urgency: 'medium' });
     this.attachPhone(c, input.phone);
     await this.cases.save(c);
@@ -95,6 +104,16 @@ export class CasesService {
   async processRecording(id: string, recordingUrl: string, mockTranscript?: string): Promise<void> {
     const c = await this.cases.findOne({ where: { id } });
     if (!c) return;
+    if (c.status !== 'PROCESSING') {
+      // Over the per-phone limit: the call was attached to an existing case.
+      try {
+        const { text } = await this.transcription.transcribe(recordingUrl, { language: c.language as Lang, mockTranscript });
+        await this.addFollowUp(c, { channel: c.channel, language: c.language as Lang, narrative: text });
+      } catch (e) {
+        await this.events.add(c.id, 'TRIAGE_FAILED', 'system', `Follow-up recording could not be processed: ${String(e).slice(0, 200)}`);
+      }
+      return;
+    }
     try {
       const { text, provider } = await this.transcription.transcribe(recordingUrl, { language: c.language as Lang, mockTranscript });
       c.narrativeEnc = this.crypto.encrypt(text);
@@ -134,6 +153,7 @@ export class CasesService {
     if (['RESOLVED', 'FALSE_ALARM'].includes(c.status)) return c;
     c.status = 'ACKNOWLEDGED';
     c.acknowledgedBy = actor;
+    c.acknowledgedAt = c.acknowledgedAt || new Date();
     await this.cases.save(c);
     this.notify.cancelEscalation(ref);
     await this.events.add(c.id, 'ACKNOWLEDGED', actor, 'Responder accepted the case');
@@ -215,9 +235,54 @@ export class CasesService {
     return {
       id: c.id, ref: c.ref, channel: c.channel, language: c.language, phoneMasked: c.phoneMasked,
       safeToContact: c.safeToContact, consentSharePolice: c.consentSharePolice, ward: c.ward, triage: c.triage,
-      pathway: c.pathway, urgency: c.urgency, status: c.status, acknowledgedBy: c.acknowledgedBy,
+      pathway: c.pathway, urgency: c.urgency, status: c.status, acknowledgedBy: c.acknowledgedBy, acknowledgedAt: c.acknowledgedAt,
       callbackWindow: c.callbackWindow, createdAt: c.createdAt, updatedAt: c.updatedAt,
     };
+  }
+
+  /** Returns the phone's latest case when the phone has used up its new-report allowance, otherwise null. */
+  private async overReportLimit(phone?: string): Promise<Case | null> {
+    if (!phone) return null;
+    const hash = this.crypto.hash(normalizePhone(phone));
+    if (this.reportLimiter.take(hash)) return null;
+    return this.cases.findOne({ where: { phoneHash: hash }, order: { createdAt: 'DESC' } });
+  }
+
+  /**
+   * A report beyond the limit is never thrown away: it is added to the phone's latest case. Only offline
+   * rules triage runs (no AI cost), responders are re-alerted only if urgency rises or a closed case reopens,
+   * and the most restrictive contact choice wins.
+   */
+  private async addFollowUp(c: Case, input: CreateCaseInput): Promise<Case> {
+    const tInput = { text: input.narrative, language: input.language, channel: input.channel, hints: { ...(input.hints || {}), ward: input.ward || c.ward || undefined } };
+    const quick = input.silent ? this.triage.silent(tInput) : input.narrative ? this.triage.rulesOnly(tInput) : this.triage.structured(tInput);
+    if (input.narrative) {
+      const previous = c.narrativeEnc ? this.crypto.decrypt(c.narrativeEnc) : '';
+      const note = `[Follow-up ${new Date().toISOString().slice(11, 16)} UTC via ${input.channel.replace('_', ' ')}] ${input.narrative}`;
+      c.narrativeEnc = this.crypto.encrypt(`${previous ? `${previous}\n\n` : ''}${note}`.slice(-8000));
+    }
+    if (input.safeToContact === false) c.safeToContact = false;
+    const reopened = CLOSED.includes(c.status);
+    const raised = URGENCY_RANK[quick.urgency as Urgency] > URGENCY_RANK[(c.urgency || 'low') as Urgency];
+    if (raised) {
+      const t = c.triage || quick;
+      const union = (a: string[] = [], b: string[] = []) => Array.from(new Set([...a, ...b]));
+      c.triage = {
+        ...t,
+        urgency: quick.urgency,
+        immediate_danger: t.immediate_danger || quick.immediate_danger,
+        violence_types: union(t.violence_types, quick.violence_types),
+        risk_flags: union(t.risk_flags, quick.risk_flags),
+        needs: union(t.needs, quick.needs),
+      };
+      this.applyTriage(c, c.triage);
+    }
+    if (reopened) c.status = 'OPEN';
+    await this.cases.save(c);
+    const what = input.silent ? 'Danger alert' : input.narrative ? 'Message' : 'Menu report';
+    await this.events.add(c.id, 'FOLLOW_UP', input.channel, `${what} from the same phone added to this case (limit of new reports reached)${raised ? `; urgency raised to ${c.urgency}` : ''}${reopened ? '; case reopened' : ''}`);
+    if (raised || reopened) this.dispatch(c);
+    return c;
   }
 
   private applyTriage(c: Case, triage: TriageResult): void {

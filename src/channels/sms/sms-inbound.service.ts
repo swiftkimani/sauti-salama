@@ -3,6 +3,7 @@ import { Lang } from '../../ai/triage.types';
 import { CasesService } from '../../cases/cases.service';
 import { CryptoService } from '../../common/crypto.service';
 import { normalizePhone } from '../../common/phone';
+import { RateLimiter } from '../../common/rate-limiter';
 import { normalizeRef } from '../../common/ref';
 import { SmsService } from '../../common/sms.service';
 import { RespondersService } from '../../responders/responders.service';
@@ -21,6 +22,7 @@ const SW_HINT = /\b(msaada|nisaidie|naomba|mume|alinipiga|amenipiga|nimebakwa|ha
 @Injectable()
 export class SmsInboundService {
   private readonly logger = new Logger(SmsInboundService.name);
+  private readonly infoLimiter = new RateLimiter(() => Number(process.env.RATE_LIMIT_INFO_PER_HOUR ?? 5), () => 60 * 60 * 1000);
 
   constructor(private readonly cases: CasesService, private readonly sms: SmsService, private readonly crypto: CryptoService, private readonly responders: RespondersService) {}
 
@@ -48,6 +50,7 @@ export class SmsInboundService {
       return;
     }
     if (/^(HELP|MSAADA|INFO|MAELEZO)\b/.test(upper)) {
+      if (!this.infoLimiter.take(phoneHash)) { this.logger.warn(`Help-info limit reached for ${from.slice(0, 5)}***`); return; }
       await this.sms.send(from, SMS.info(upper.startsWith('MSAADA') || upper.startsWith('MAELEZO') ? 'sw' : 'en'), 'survivor');
       return;
     }

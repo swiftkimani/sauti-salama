@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { buildTriageUserMessage, TRIAGE_SYSTEM_PROMPT } from './prompts';
+import { buildTriageUserMessage, TRIAGE_JSON_SCHEMA, TRIAGE_SYSTEM_PROMPT } from './prompts';
 import { normalizeTriage, rulesTriage, silentTriage, structuredTriage } from './rules';
 import { TriageInput, TriageResult } from './triage.types';
+
+export const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 /**
  * AI structures, humans decide. The model turns a raw narrative (voice transcript or SMS,
@@ -12,50 +14,91 @@ import { TriageInput, TriageResult } from './triage.types';
 export class TriageService {
   private readonly logger = new Logger(TriageService.name);
 
+  /** groq (default when GROQ_API_KEY is set) | anthropic | rules. AI_PROVIDER overrides. */
   get provider(): string {
     const p = (process.env.AI_PROVIDER || '').toLowerCase();
     if (p) return p;
+    if (process.env.GROQ_API_KEY) return 'groq';
     return process.env.ANTHROPIC_API_KEY ? 'anthropic' : 'rules';
+  }
+
+  get model(): string | null {
+    if (this.provider === 'groq') return process.env.GROQ_MODEL || GROQ_DEFAULT_MODEL;
+    if (this.provider === 'anthropic') return process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+    return null;
   }
 
   async triage(input: TriageInput): Promise<TriageResult> {
     const floor = rulesTriage(input);
-    if (this.provider !== 'anthropic' || !input.text) return floor;
+    const provider = this.provider;
+    if (!input.text || !['groq', 'anthropic'].includes(provider)) return floor;
     try {
-      const raw = await this.callAnthropic(input);
-      return normalizeTriage(raw, input, floor);
+      const raw = provider === 'groq' ? await this.callGroq(input) : await this.callAnthropic(input);
+      return normalizeTriage(raw, input, floor, provider);
     } catch (e) {
       this.logger.warn(`AI triage failed (${(e as Error)?.message || e}); falling back to rules-based triage`);
       return floor;
     }
   }
 
+  /** Offline keyword triage only, e.g. for follow-up messages that must not cost an AI call. */
+  rulesOnly(input: TriageInput): TriageResult { return rulesTriage(input); }
   structured(input: TriageInput): TriageResult { return structuredTriage(input); }
   silent(input: TriageInput): TriageResult { return silentTriage(input); }
 
+  /**
+   * Groq's OpenAI-compatible chat API. Models with constrained decoding (gpt-oss, qwen) get the strict
+   * JSON schema; others get JSON mode. If a model rejects the schema, retry once in JSON mode.
+   */
+  private async callGroq(input: TriageInput): Promise<any> {
+    if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not set');
+    const model = process.env.GROQ_MODEL || GROQ_DEFAULT_MODEL;
+    const strict = /gpt-oss|qwen/i.test(model);
+    const body = (schema: boolean) => ({
+      model,
+      messages: [
+        { role: 'system', content: TRIAGE_SYSTEM_PROMPT },
+        { role: 'user', content: buildTriageUserMessage(input) },
+      ],
+      response_format: schema
+        ? { type: 'json_schema', json_schema: { name: 'triage', strict: true, schema: TRIAGE_JSON_SCHEMA } }
+        : { type: 'json_object' },
+      max_completion_tokens: 2000,
+      ...(/gpt-oss/i.test(model) ? { reasoning_effort: 'low', include_reasoning: false } : { temperature: 0 }),
+    });
+    let res = await this.post('https://api.groq.com/openai/v1/chat/completions', process.env.GROQ_API_KEY, body(strict));
+    if (!res.ok && strict && res.status === 400) {
+      this.logger.warn(`Groq rejected the JSON schema for ${model}; retrying in JSON mode`);
+      res = await this.post('https://api.groq.com/openai/v1/chat/completions', process.env.GROQ_API_KEY, body(false));
+    }
+    if (!res.ok) throw new Error(`Groq API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data: any = await res.json();
+    return parseJsonObject(String(data?.choices?.[0]?.message?.content || ''));
+  }
+
   private async callAnthropic(input: TriageInput): Promise<any> {
+    const res = await this.post('https://api.anthropic.com/v1/messages', null, {
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
+      max_tokens: 900,
+      system: TRIAGE_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildTriageUserMessage(input) }],
+    }, { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data: any = await res.json();
+    const text = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
+    return parseJsonObject(text);
+  }
+
+  private async post(url: string, bearer: string | null, body: unknown, headers: Record<string, string> = {}): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), Number(process.env.AI_TIMEOUT_MS || 12000));
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      return await fetch(url, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
-          max_tokens: 900,
-          system: TRIAGE_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: buildTriageUserMessage(input) }],
-        }),
+        headers: { 'content-type': 'application/json', ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), ...headers },
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${(await res.text()).slice(0, 200)}`);
-      const data: any = await res.json();
-      const text = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
-      return parseJsonObject(text);
     } finally {
       clearTimeout(timer);
     }

@@ -9,6 +9,6 @@ The hackathon allows AI development tools and requires the core idea to be the p
 * draft the triage JSON contract and the rules-based keyword lists (which I reviewed and extended with Kiswahili/Sheng phrasing);
 * write the unit tests, the local channel simulator, the responder console, and first drafts of the documentation which I edited.
 
-**Claude API inside the product** - the triage model that turns a transcript or SMS into the responder brief, always behind a deterministic safety floor and never generating survivor-facing text. OpenAI Whisper is used for speech-to-text of voice recordings. Both are optional at runtime.
+**AI inside the product (Groq)** - the open-weight `gpt-oss-120b` model served by Groq turns a transcript or SMS into the responder brief, constrained to a strict JSON schema, always behind a deterministic safety floor and never generating survivor-facing text. Whisper large v3 on Groq transcribes voice recordings. Both are optional at runtime; the Claude API is a supported alternative for triage.
 
 Everything survivor-facing (`src/i18n/messages.ts`) and every referral rule (`src/cases/referral.service.ts`) was written or reviewed by me against Kenya's GBV response standards.

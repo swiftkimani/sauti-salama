@@ -27,7 +27,7 @@ Sauti Salama is a **backend**, not an app. It sits behind three channels every p
 
 Behind the channels:
 
-1. **AI triage** (Claude API): the transcript or SMS becomes a structured, bilingual responder brief - violence type, urgency, immediate danger, hours since the incident, perpetrator relationship, child survivor, risk flags (weapon, strangulation, children present), needs. A **rules-based floor** runs first and always: the AI can raise urgency, never lower a danger signal, and the line keeps working with no AI key at all.
+1. **AI triage** (open-weight `gpt-oss-120b` on Groq, strict JSON-schema output): the transcript or SMS becomes a structured, bilingual responder brief - violence type, urgency, immediate danger, hours since the incident, perpetrator relationship, child survivor, risk flags (weapon, strangulation, children present), needs. A **rules-based floor** runs first and always: the AI can raise urgency, never lower a danger signal, the console shows exactly where the rules overrode the AI, and the line keeps working with no AI key at all. Call recordings are transcribed by Whisper large v3 on Groq.
 2. **Referral pathway engine**: deterministic rules produce ordered next steps with deadlines and the verified service for each (72h PEP / 120h emergency contraception and the PRC form MOH 363; P3 form and Gender Desks; Protection Orders under PADVA 2015; FIDA Kenya legal aid; Childline 116 and mandatory child-protection referral; shelter via 1195/GVRC).
 3. **Tiered, community-first routing**: Tier 1 = vetted community responders for the survivor's ward (community health promoters, peace-committee members, trained volunteers). If nobody acknowledges within N minutes, Tier 2 = institutional desk. Police involvement is the survivor's choice, never the default.
 4. **Survivor-controlled privacy**: no registration, no ID. Phone numbers and narratives are AES-256-GCM encrypted; the console shows masked numbers; a responder can reveal a number only if the survivor said the phone is safe, and every reveal is logged. The survivor can check status or **erase everything** from the same USSD menu.
@@ -53,8 +53,9 @@ Open:
 
 | What | Env | Notes |
 |---|---|---|
-| Claude AI triage | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Without a key the rules-based triage runs alone (the console's System status menu shows "AI triage: Rules engine"). Model IDs: https://platform.claude.com/docs/en/about-claude/models/overview |
-| Voice transcription | `OPENAI_API_KEY` (Whisper) | Without it the simulator's typed transcript / a sample is used. |
+| AI triage and call transcription | `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_TRANSCRIBE_MODEL` | One free key from [console.groq.com/keys](https://console.groq.com/keys) powers both. `npm run build && npm run ai:check` verifies the key and runs a sample Sheng report through triage. Without a key the rules-based triage runs alone and the simulator's typed transcript is used. `AI_PROVIDER=anthropic` with `ANTHROPIC_API_KEY` is also supported. |
+| Kiswahili voice prompts | `SW_AUDIO_BASE_URL` | Record the prompts listed in [docs/VOICE_PROMPTS_SW.md](docs/VOICE_PROMPTS_SW.md), put them in `public/audio/sw/` and set `/audio/sw`. |
+| Abuse protection | `RATE_LIMIT_REPORTS_PER_HOUR`, `RATE_LIMIT_INFO_PER_HOUR` | Beyond 3 new cases an hour, further reports from a phone are added to its latest case (never dropped). |
 | Africa's Talking | `AT_USERNAME`, `AT_API_KEY`, `AT_SENDER_ID`, `PUBLIC_BASE_URL`, `WEBHOOK_SECRET` | See [Connecting Africa's Talking](#connecting-africas-talking) below. |
 | Your phone as the responder | `DEMO_RESPONDER_PHONE` | Every Tier-1 alert goes here. |
 | Production database | `DB_TYPE=postgres`, `DATABASE_URL` | `docker compose up` starts Postgres + the app. Default is a zero-setup `sql.js` file DB. |
@@ -92,8 +93,8 @@ flowchart LR
     IVR[IVR flow]
     USSD[USSD flow]
     SMSin[SMS keywords]
-    TR[Transcription<br/>Whisper]
-    AI[AI triage<br/>Claude + rules floor]
+    TR[Transcription<br/>Whisper on Groq]
+    AI[AI triage<br/>Groq LLM + rules floor]
     RP[Referral pathway engine]
     NT[Tiered notify + escalation timer]
     DB[(Encrypted case store<br/>sql.js / PostgreSQL)]
@@ -121,7 +122,7 @@ src/
   channels/voice   IVR: Africa's Talking call-action XML, language menu, record, silent alert, consent
   channels/ussd    USSD state machine (report / danger now / info / call back / status / delete)
   channels/sms     inbound keywords (ACK, RESOLVE, HELP, YES, STOP) + free-text reports
-  ai/              Claude prompt + JSON contract, rules-based floor, transcription, place gazetteer
+  ai/              triage prompt + JSON schema (Groq or Claude), rules-based floor, transcription, place gazetteer
   cases/           case service, referral pathway engine, tiered notify + escalation, audit events, retention purge
   resources/       verified support directory (seeded)
   responders/      vetted responder registry (seeded with demo data)
@@ -136,7 +137,7 @@ test/              unit tests (triage rules, pathway engine)
 
 * **AI structures, humans decide, survivors get vetted text.** The model only ever produces the responder brief. Every word a survivor sees or hears is a reviewed template (`src/i18n/messages.ts`). No hallucinated advice can reach a survivor.
 * **Silence is a feature.** USSD leaves no trace; the voice line's "9" hangs up immediately so the call log shows a misdial; the SMS channel sends exactly one neutral reply until the survivor says the phone is safe.
-* **No registration.** Anonymity is the difference between a report and no report. Abuse of the line is handled by rate limiting, responder vetting and the acknowledgement loop, not by ID checks.
+* **No registration.** Anonymity is the difference between a report and no report. Abuse of the line is handled by per-number rate limiting (extra reports join the phone's existing case, so a real emergency is never dropped), responder vetting and the acknowledgement loop, not by ID checks.
 * **No blockchain, on purpose.** GBV disclosures are sensitive personal data under the Kenya Data Protection Act 2019; the right to erasure and storage limitation are incompatible with an immutable ledger. Erasure here is a real hard delete you can trigger from a KSh 0 USSD session.
 * **Degrades gracefully.** No AI key -> rules triage. No transcription key -> sample transcript. No Africa's Talking key -> console outbox. No Postgres -> file database. The demo cannot be broken by a third party being down.
 
@@ -144,7 +145,7 @@ test/              unit tests (triage rules, pathway engine)
 
 1. Pilot with two community responder networks in Nairobi (e.g. Kayole and Kibra) and one GBV Recovery Centre as Tier 2; measure time-to-acknowledge.
 2. Pre-recorded Kiswahili voice prompts (drop-in via `SW_AUDIO_BASE_URL`), then Dholuo, Gikuyu, Somali, Kalenjin.
-3. Responder accounts and roles, rate limiting per number, telco zero-rating of the USSD code, WhatsApp channel.
+3. Responder accounts and roles, telco zero-rating of the USSD code, WhatsApp channel.
 4. Location without GPS: ward-level lookup from the survivor's typed area, later telco cell-site LBS under a data-sharing agreement.
 5. Anonymised, aggregated incident reporting for county GBV working groups (ward-level heat maps, never case-level).
 

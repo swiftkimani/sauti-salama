@@ -32,10 +32,26 @@ export class VoiceService {
   }
   private sweep() { const cutoff = Date.now() - 60 * 60 * 1000; for (const [k, v] of this.sessions) if (v.startedAt < cutoff) this.sessions.delete(k); }
 
-  /** Kiswahili prompts can be pre-recorded (SW_AUDIO_BASE_URL/<key>.mp3); otherwise text-to-speech. */
-  private prompt(lang: Lang, key: string, text: string): string {
+  /**
+   * Kiswahili prompts can be pre-recorded as <SW_AUDIO_BASE_URL>/<key>.mp3 (see docs/VOICE_PROMPTS_SW.md); otherwise
+   * text-to-speech. A relative base such as /audio/sw is served by this app from public/audio/sw.
+   */
+  private audioBase(lang: Lang): string | null {
     const base = process.env.SW_AUDIO_BASE_URL;
-    return lang === 'sw' && base ? play(`${base.replace(/\/$/, '')}/${key}.mp3`) : say(text);
+    if (lang !== 'sw' || !base) return null;
+    return (base.startsWith('/') ? `${this.base}${base}` : base).replace(/\/$/, '');
+  }
+
+  private prompt(lang: Lang, key: string, text: string): string {
+    const base = this.audioBase(lang);
+    return base ? play(`${base}/${key}.mp3`) : say(text);
+  }
+
+  /** A question that includes the spoken reference: recorded audio plays around a text-to-speech reference. */
+  private refQuestion(lang: Lang, key: string, template: (l: Lang, ref: string) => string, ref: string, callback: string): string {
+    const base = this.audioBase(lang);
+    if (!base) return response(getDigits({ callbackUrl: this.url(callback), prompt: say(template(lang, ref)), timeout: 8 }));
+    return response(play(`${base}/${key}_1.mp3`), say(ref), getDigits({ callbackUrl: this.url(callback), prompt: play(`${base}/${key}_2.mp3`), timeout: 8 }));
   }
 
   entry(body: Record<string, string>): string {
@@ -99,7 +115,7 @@ export class VoiceService {
     if (numbers.length) return response(this.prompt(s.lang, 'transfer', t(s.lang, VOICE.transfer)), dial(numbers, body.destinationNumber));
     const c = await this.cases.createCase({ channel: 'voice', language: s.lang, phone: body.callerNumber, hints: { callback: true }, callbackWindow: 'as soon as possible' });
     s.caseRef = c.ref;
-    return response(getDigits({ callbackUrl: this.url('consent'), prompt: this.prompt(s.lang, 'callback', VOICE.callbackLogged(s.lang, spellRef(c.ref))), timeout: 8 }));
+    return this.refQuestion(s.lang, 'callback', VOICE.callbackLogged, spellRef(c.ref), 'consent');
   }
 
   async recording(body: Record<string, string>): Promise<string> {
@@ -110,7 +126,7 @@ export class VoiceService {
     // Background: transcribe -> AI triage -> pathway -> notify responders. The caller is not kept waiting.
     const mock = process.env.NODE_ENV !== 'production' ? body.mockTranscript : undefined;
     this.cases.processRecording(c.id, body.recordingUrl || '', mock).catch((e) => this.logger.error(`processing ${c.ref}: ${e}`));
-    return response(getDigits({ callbackUrl: this.url('consent'), prompt: this.prompt(s.lang, 'afterRecord', VOICE.afterRecord(s.lang, spellRef(c.ref))), timeout: 8 }));
+    return this.refQuestion(s.lang, 'afterRecord', VOICE.afterRecord, spellRef(c.ref), 'consent');
   }
 
   async consent(body: Record<string, string>): Promise<string> {
