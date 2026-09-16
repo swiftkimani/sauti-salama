@@ -75,7 +75,7 @@ async function main() {
       const h = await r.json();
       if (h.ok) ok(`Server reachable through the tunnel (SMS mode: ${h.sms}, AI: ${h.ai})`);
       else fail(`Health check answered but not ok: ${JSON.stringify(h)}`);
-      if (h.sms === 'console') warn('The running server has no AT_API_KEY yet: restart it after editing .env.');
+      if (h.sms === 'console') warn('The running server has no AT_API_KEY yet. Save it in .env (npm run live restarts the server automatically).');
     } catch (e) {
       fail(`${publicBase}/api/health is not reachable (${e.message}). Is the server running and the tunnel open?`);
     }

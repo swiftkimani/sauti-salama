@@ -65,8 +65,8 @@ Open:
 SMS and USSD work in the free **sandbox**. Voice is not available in the sandbox: it needs a live account, a voice number from Africa's Talking and airtime credit.
 
 1. **Secure the server before it goes public.** In `.env` set a long `DASHBOARD_TOKEN` and a `WEBHOOK_SECRET` (`npm run keygen` prints one). Callbacks without `?key=<WEBHOOK_SECRET>` are refused.
-2. **Open a public HTTPS URL.** `npm run tunnel` (needs `brew install cloudflared`, no account) prints an `https://....trycloudflare.com` address. Put it in `PUBLIC_BASE_URL`. A quick tunnel gets a new address every time it starts, so update `.env` and the dashboard when it changes; use a named tunnel or a deployment for anything longer-lived.
-3. **Get an API key.** Sign in at [account.africastalking.com](https://account.africastalking.com), open the **sandbox** app, go to *Settings > API Key*, generate a key and paste it into `AT_API_KEY` (keep `AT_USERNAME=sandbox`). Restart the server.
+2. **Run the server on a public HTTPS URL.** `npm run live` (needs `brew install cloudflared`, no account) builds the server, opens a free tunnel, saves its `https://....trycloudflare.com` address to `PUBLIC_BASE_URL` and starts the server. Keep that terminal open; Ctrl+C stops both. A quick tunnel gets a new address every time it starts, so update the dashboard callback URLs when it changes; use a named tunnel or a deployment for anything longer-lived.
+3. **Get an API key.** Sign in at [account.africastalking.com](https://account.africastalking.com), open the **sandbox** app, go to *Settings > API Key*, generate a key and paste it into `AT_API_KEY` (keep `AT_USERNAME=sandbox`). Do this before `npm run live` so you don't have to restart it (and get a new address) afterwards.
 4. **Check everything:** `npm run at:check`. It verifies the key, the tunnel and the webhook protection, and prints the exact callback URLs (with the key) to use next.
 5. **Configure the sandbox app** with those URLs:
    * *USSD > Create channel*: pick a code such as `*384*XXXX#`, callback = the USSD URL.

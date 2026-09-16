@@ -12,6 +12,7 @@
     "test": "jest",
     "demo": "bash scripts/demo.sh",
     "tunnel": "cloudflared tunnel --url http://localhost:3000",
+    "live": "bash scripts/live.sh",
     "at:check": "node scripts/at-check.js",
     "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
