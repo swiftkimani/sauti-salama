@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sauti Salama</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .home { max-width: 960px; margin: 0 auto; padding: 56px 24px 48px }
+  .home h1 { font-size: 32px; letter-spacing: -.02em; max-width: 640px }
+  .home .lead { margin-top: 12px; font-size: 17px; color: var(--text-2); max-width: 640px }
+  .entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 32px }
+  .entry a { display: flex; flex-direction: column; gap: 10px; padding: 22px; color: inherit; text-decoration: none; transition: border-color .12s, box-shadow .12s }
+  .entry a:hover { border-color: var(--brand-line); box-shadow: var(--shadow) }
+  .entry .empty-icon { width: 44px; height: 44px }
+  .entry h2 { font-size: 18px }
+  .entry p { color: var(--text-2); font-size: 14.5px }
+  .entry .go { margin-top: auto; padding-top: 6px; display: inline-flex; gap: 6px; align-items: center; font-weight: 600; color: var(--brand) }
+  .channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 40px }
+  .channels > div { display: flex; gap: 12px; align-items: flex-start }
+  .channels .icon { color: var(--brand); margin-top: 2px }
+  .channels b { display: block; font-size: 14.5px }
+  .channels span { font-size: 13.5px; color: var(--text-2) }
+  .notice { margin-top: 40px }
+  @media (max-width: 720px) {
+    .home { padding-top: 32px }
+    .home h1 { font-size: 26px }
+    .entry, .channels { grid-template-columns: minmax(0, 1fr) }
+  }
+</style>
+</head>
+<body>
+<header class="appbar">
+  <a class="appbar-brand" href="./"><span data-logo></span><span class="brand-text"><span class="brand-name">Sauti Salama</span><span class="brand-sub">Safe Voice</span></span></a>
+</header>
+<main class="home">
+  <h1>A GBV reporting and referral line that works on any phone</h1>
+  <p class="lead">Survivors call, dial a USSD code or send one SMS. A vetted community responder is alerted within seconds, and the survivor gets the right next step.</p>
+
+  <div class="entry">
+    <a class="card" href="dashboard.html">
+      <span class="empty-icon" data-icon="shieldCheck"></span>
+      <h2>Responder console</h2>
+      <p>See reports by urgency, read the triage brief in English and Kiswahili, follow the next-step checklist and record every action.</p>
+      <span class="go">Open console <span data-icon="chevronRight"></span></span>
+    </a>
+    <a class="card" href="simulator.html">
+      <span class="empty-icon" data-icon="mobile"></span>
+      <h2>Channel simulator</h2>
+      <p>Test the USSD menu, the call line and SMS from a survivor's point of view, and watch the messages the system sends.</p>
+      <span class="go">Open simulator <span data-icon="chevronRight"></span></span>
+    </a>
+  </div>
+
+  <div class="channels">
+    <div><span data-icon="phone"></span><div><b>Call line</b><span>Speak in your own words, or press 9 for a silent alert.</span></div></div>
+    <div><span data-icon="grid"></span><div><b>USSD *384*7262#</b><span>Silent, no data, nothing left in the call log.</span></div></div>
+    <div><span data-icon="message"></span><div><b>SMS</b><span>Text in English, Kiswahili or Sheng.</span></div></div>
+  </div>
+
+  <div class="callout warn notice"><span data-icon="alert"></span><div><b>This is a proof of concept, not a live service.</b><p>If you are in danger in Kenya call 999 or 112. The national GBV helpline 1195 is free and open 24 hours. Childline Kenya: 116.</p></div></div>
+</main>
+<script src="assets/ui.js"></script>
+<script>
+  for (const el of document.querySelectorAll('[data-logo]')) el.outerHTML = UI.LOGO;
+  for (const el of document.querySelectorAll('[data-icon]')) {
+    if (el.classList.contains('empty-icon')) el.innerHTML = UI.icon(el.dataset.icon, 'lg');
+    else el.outerHTML = UI.icon(el.dataset.icon);
+  }
+</script>
+</body>
+</html>

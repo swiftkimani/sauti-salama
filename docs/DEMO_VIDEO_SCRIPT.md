@@ -1,0 +1,17 @@
+# Demo video script (3:00)
+
+Record with the simulator and the console side by side (OBS / Loom). Use a real feature phone in shot for the opening if you can. Keep the console token in the URL so it loads instantly.
+
+Set `ESCALATION_MINUTES=0.5` for the recording so escalation can be shown in 30 seconds.
+
+| Time | On screen | Voice-over |
+|---|---|---|
+| 0:00-0:15 | You on camera, a feature phone in hand | "Hi, I'm Benard Kimani. KDHS 2022 says more than four in ten Kenyan women with a partner have been hit or forced by that partner. Most never report, and every reporting tool assumes a smartphone and a private moment. This is Sauti Salama: any phone, no internet, no app." |
+| 0:15-0:40 | Simulator, USSD phone. Dial `*384*7262#`, press 2 (Kiswahili), 2 ("Niko hatarini SASA"), type "Dandora". Outbox panel shows the CRITICAL alert appear. | "A survivor with the abuser in the next room dials the code. Two key presses and a word. Silent, free on most networks, nothing left on the phone. Within a second a vetted community responder in Dandora is paged." |
+| 0:40-1:15 | Simulator, IVR. Call, press 1 (English), 1 (record). Pick the Kibra sample, send. Show the reference read back and the consent question; press 2 ("not safe"). Then show the outbox alert. | "Someone who can't type calls the line, chooses a language and simply talks. The recording is transcribed and triaged in the background while the caller gets a reference number and one question: is it safe to call this phone? She says no - so nobody ever will." |
+| 1:15-1:45 | Console. Open the voice case. Point at: urgency badge, 72-hour flag, risk flags, the English and Kiswahili brief, the next-step checklist with the 72h deadline and GVRC number. | "Here is what the responder sees. AI turned the report into a brief in both languages: sexual violence, within 72 hours, known perpetrator. A rules layer underneath makes sure the AI can never lower a danger signal. And every survivor-facing word is a reviewed template - the model never writes to a survivor." |
+| 1:45-2:10 | Console. Point at "Do not call or text this phone" and the disabled "Reveal phone number" button. Simulator SMS panel: responder sends `ACK SS-XXXX`. Console status flips to acknowledged. USSD: option 5, enter the reference -> "responder Amina W. has accepted your case". | "The phone is masked and can't be revealed without consent. The responder accepts by SMS. The survivor checks who is coming from the same free menu. If nobody accepts in ten minutes, the case escalates to the GBV Recovery Centre desk automatically." |
+| 2:10-2:35 | Simulator SMS: a Sheng report ("Manze msee wangu amenichapa..."). Outbox shows the alert with HIGH/CRITICAL. Then USSD option 6: erase -> "deleted". Console: case gone; queue footer "Erased on request: 1". | "Sheng, Kiswahili, English - all handled. And the survivor can delete everything from a free USSD session: a real hard delete, which is why there is no blockchain anywhere near this." |
+| 2:35-3:00 | Architecture slide, then you on camera | "NestJS, Africa's Talking, Claude behind a rules floor, encrypted PostgreSQL, Kenya DPA 2019 by design. It routes to a vetted neighbour first, an institution second, and the police only when the survivor chooses. That is power shifted to the community. The code runs today. Asante." |
+
+Checklist before recording: fresh database (`rm data/*.sqlite`), `DEMO_RESPONDER_PHONE` set to your number if you show a real SMS arriving, browser zoom 110%, console filter set to "Open", notifications off.

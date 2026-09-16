@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel simulator · Sauti Salama</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/ui.css">
+<style>
+  .sim { max-width: 1440px; margin: 0 auto; padding: 24px 24px 48px }
+  .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 32px; align-items: end; margin-bottom: 20px }
+  .intro h1 { font-size: 24px }
+  .intro p { margin-top: 6px; color: var(--text-2); max-width: 680px }
+  .settings { display: flex; gap: 12px; padding: 14px; flex-wrap: wrap }
+  .settings .field { width: 210px }
+  .sim-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start }
+
+  /* ---------- Tabs */
+  .sim-main { overflow: hidden; container-type: inline-size }
+  .tabs { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto }
+  .tab { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 14px 12px; border: 0; background: none; font-weight: 600; font-size: 14px; color: var(--text-3); cursor: pointer; white-space: nowrap }
+  .tab:hover { color: var(--text) }
+  .tab[aria-selected="true"] { color: var(--brand-ink) }
+  .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand) }
+  .tab .code { font: 500 12px var(--mono); color: var(--text-3) }
+  .tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--critical-solid) }
+  .channel { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 32px; padding: 24px }
+  @container (max-width: 760px) { .channel { grid-template-columns: minmax(0, 1fr); padding: 16px } }
+  @container (max-width: 480px) { .tab .code { display: none } }
+
+  /* ---------- Guide column */
+  .guide { display: flex; flex-direction: column; gap: 18px; min-width: 0 }
+  .guide h2 { font-size: 18px }
+  .guide > div > p { margin-top: 4px; color: var(--text-2); font-size: 14px }
+  .guide h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 8px }
+  .guide-block { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2) }
+  .guide-steps { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; font-size: 14px }
+  .keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 14px }
+  .keys li { display: grid; grid-template-columns: 136px 1fr; gap: 10px; align-items: baseline }
+  .keys li > span:first-child { display: flex; gap: 4px; flex-wrap: wrap }
+  .guide .field { gap: 4px }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap }
+
+  /* ---------- Feature phone (USSD) */
+  .feature-phone { width: 100%; max-width: 320px; margin: 0 auto; padding: 20px 18px 18px; border-radius: 36px 36px 28px 28px; background: linear-gradient(180deg, #2B313A, #1A1E24); box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .08) }
+  .fp-speaker { width: 56px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: #0E1114 }
+  .fp-screen { background: #C9D8B6; border-radius: 8px; padding: 10px 12px; border: 4px solid #0F1215; color: #1C2A12; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .25) }
+  .fp-status { display: flex; justify-content: space-between; font: 600 11px var(--mono); opacity: .7; padding-bottom: 6px; border-bottom: 1px solid rgba(28, 42, 18, .25) }
+  .fp-text { font: 14px/1.45 var(--mono); white-space: pre-wrap; min-height: 176px; max-height: 240px; overflow-y: auto; padding: 8px 0; word-break: break-word }
+  .fp-input-row { display: flex; gap: 6px }
+  .fp-input { flex: 1; min-width: 0; font: 14px var(--mono); padding: 6px 8px; border: 1px solid rgba(28, 42, 18, .45); border-radius: 4px; background: rgba(255, 255, 255, .45); color: #1C2A12 }
+  .fp-input:disabled { opacity: .55 }
+  .fp-input::placeholder { color: rgba(28, 42, 18, .55) }
+  .fp-input:focus { outline: 2px solid #1C2A12; outline-offset: 1px }
+  .fp-clear { border: 1px solid rgba(28, 42, 18, .45); background: rgba(255, 255, 255, .3); border-radius: 4px; color: #1C2A12; width: 34px; display: grid; place-items: center; cursor: pointer }
+  .fp-clear:disabled { opacity: .45; cursor: default }
+  .fp-soft { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 12px }
+  .fp-soft .btn { min-height: 42px; border-radius: 12px }
+  .fp-send { background: #18A058; color: #fff }
+  .fp-send:hover { background: #12864A }
+  .fp-end { background: #D63B30; color: #fff }
+  .fp-end:hover { background: #B42318 }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+  .key { min-height: 44px; border-radius: 12px; border: 0; cursor: pointer; font-size: 18px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05 }
+  .key small { font-size: 9px; letter-spacing: .08em; font-weight: 600; opacity: .6 }
+  .key:disabled { cursor: default; opacity: .45 }
+  .feature-phone .key { background: #3A424D; color: #F2F4F7; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .3) }
+  .feature-phone .key:not(:disabled):hover { background: #465060 }
+  .feature-phone .key:not(:disabled):active { transform: translateY(1px) }
+
+  /* ---------- Call screen (voice) */
+  .call { width: 100%; max-width: 340px; margin: 0 auto; display: flex; flex-direction: column; border-radius: 28px; background: #151A21; color: #E6E9EE; padding: 18px; box-shadow: var(--shadow-lg) }
+  .call-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, .08) }
+  .call-top .brand-mark { width: 40px; height: 40px }
+  .call-name { font-weight: 650 }
+  .call-status { font-size: 13px; color: #9AA4B2; display: flex; align-items: center; gap: 6px }
+  .call-timer { margin-left: auto; font: 13px var(--mono); color: #9AA4B2 }
+  .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #F04438; animation: pulse 1s infinite }
+  @keyframes pulse { 50% { opacity: .3 } }
+  .call-log { height: 250px; overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; line-height: 1.45 }
+  .call-log .line { align-self: flex-start; max-width: 90%; background: #232B36; border-radius: 12px 12px 12px 4px; padding: 8px 11px }
+  .call-log .line::before { content: "Line says"; display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #B794E0; margin-bottom: 2px }
+  .call-log .you { align-self: flex-end; max-width: 85%; background: #4B2A6E; border-radius: 12px 12px 4px 12px; padding: 8px 11px }
+  .call-log .sys { align-self: center; text-align: center; color: #8A94A3; font-size: 12.5px; padding: 0 8px }
+  .call .keypad { padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .08) }
+  .call .key { background: #232B36; color: #F2F4F7; min-height: 42px }
+  .call .key:not(:disabled):hover { background: #2E3846 }
+  .call .key.hint-key:not(:disabled) { box-shadow: 0 0 0 2px #7F56D9 }
+  .recorder { padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .08); display: flex; flex-direction: column; gap: 8px }
+  .recorder-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #FDA29B }
+  .recorder .select, .recorder .textarea { background-color: #232B36; border-color: #364152; color: #E6E9EE; box-shadow: none }
+  .recorder .textarea { min-height: 84px; font-size: 14px }
+  .recorder .textarea::placeholder { color: #7D8898 }
+  .call-actions { display: flex; justify-content: center; gap: 12px; padding-top: 14px }
+  .call-actions .btn { min-width: 150px; border-radius: 999px }
+
+  /* ---------- Chat (SMS) */
+  .chat { width: 100%; max-width: 360px; margin: 0 auto; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 24px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-lg) }
+  .chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line) }
+  .chat-head .brand-mark { width: 34px; height: 34px }
+  .chat-head b { display: block; font-size: 14px }
+  .chat-head span { font-size: 12px; color: var(--text-3) }
+  .chat-log { height: 320px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: #F7F5FA; font-size: 14px; line-height: 1.45 }
+  .bubble { max-width: 84%; padding: 8px 12px; border-radius: 16px; white-space: pre-wrap; word-break: break-word }
+  .bubble.out { align-self: flex-end; background: var(--brand); color: #fff; border-bottom-right-radius: 4px }
+  .bubble.in { align-self: flex-start; background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px }
+  .bubble small { display: block; font-size: 11px; opacity: .7; margin-top: 3px }
+  .chat-note { align-self: center; text-align: center; font-size: 12px; color: var(--text-3); max-width: 90% }
+  .chat-quick { display: flex; gap: 6px; padding: 10px 12px 0; flex-wrap: wrap }
+  .chat-quick button { border: 1px solid var(--brand-line); background: var(--brand-soft); color: var(--brand-ink); border-radius: 999px; padding: 3px 10px; font: 600 12.5px var(--mono); cursor: pointer }
+  .chat-quick button:hover { background: #EADCF5 }
+  .chat-compose { display: flex; gap: 8px; padding: 10px 12px 12px; align-items: flex-end }
+  .chat-compose .textarea { min-height: 44px; max-height: 140px; border-radius: 20px; padding: 10px 14px; resize: none }
+  .chat-compose .btn { border-radius: 50%; width: 44px; min-height: 44px }
+
+  /* ---------- Outbox */
+  .outbox { position: sticky; top: calc(var(--appbar-h) + 16px); display: flex; flex-direction: column; max-height: calc(100vh - var(--appbar-h) - 32px) }
+  .outbox-tools { padding: 12px 18px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px }
+  .outbox-tools .segmented { align-self: flex-start; flex-wrap: wrap }
+  .outbox-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 200px }
+  .msg { border: 1px solid var(--line); border-left: 4px solid var(--k); border-radius: 10px; padding: 10px 12px; background: var(--surface) }
+  .msg.k-responder { --k: var(--brand) }
+  .msg.k-survivor { --k: var(--ok-solid) }
+  .msg.k-system { --k: var(--medium-solid) }
+  .msg.is-new { animation: msg-in 1.4s ease-out }
+  @keyframes msg-in { 0% { background: var(--brand-soft) } 100% { background: var(--surface) } }
+  .msg-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-3) }
+  .msg-head time { margin-left: auto }
+  .msg-body { margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; font: 13px/1.5 var(--mono); color: var(--text) }
+  .msg-foot { margin-top: 6px; font-size: 11.5px; color: var(--text-3) }
+
+  @media (max-width: 1100px) {
+    .sim-grid { grid-template-columns: minmax(0, 1fr) }
+    .outbox { position: static; max-height: 640px }
+  }
+  @media (max-width: 760px) {
+    .sim { padding: 16px 16px 40px }
+    .intro { grid-template-columns: minmax(0, 1fr) }
+    .settings .field { width: auto; flex: 1 1 180px }
+    .intro h1 { font-size: 20px }
+  }
+</style>
+</head>
+<body>
+<header class="appbar">
+  <a class="appbar-brand" href="./"><span data-logo></span><span class="brand-text"><span class="brand-name">Sauti Salama</span><span class="brand-sub">Channel simulator</span></span></a>
+  <span class="badge tone-info hide-sm">Test tool</span>
+  <a class="btn btn-primary btn-sm" id="consoleLink" href="dashboard.html" target="_blank" rel="noopener"></a>
+</header>
+
+<main class="sim">
+  <section class="intro">
+    <div>
+      <h1>Try the line from a survivor's phone</h1>
+      <p>Each action sends the same webhook Africa's Talking would send, so you can test USSD, the call line and SMS without any accounts. Everything the system sends back appears in the outbox.</p>
+    </div>
+    <form class="card settings" onsubmit="return false">
+      <label class="field"><span>Survivor's phone number</span><input class="input mono" id="phone" inputmode="tel" autocomplete="off"></label>
+      <label class="field"><span>Console token</span><input class="input" id="token" autocomplete="off"></label>
+    </form>
+  </section>
+
+  <div class="sim-grid">
+    <div class="card sim-main">
+      <div class="tabs" role="tablist" aria-label="Channel">
+        <button class="tab" role="tab" id="tab-ussd" aria-controls="panel-ussd" data-tab="ussd"></button>
+        <button class="tab" role="tab" id="tab-voice" aria-controls="panel-voice" data-tab="voice"></button>
+        <button class="tab" role="tab" id="tab-sms" aria-controls="panel-sms" data-tab="sms"></button>
+      </div>
+
+      <!-- USSD -->
+      <section class="channel" role="tabpanel" id="panel-ussd" aria-labelledby="tab-ussd">
+        <div>
+          <div class="feature-phone">
+            <div class="fp-speaker"></div>
+            <div class="fp-screen">
+              <div class="fp-status"><span>*384*7262#</span><span id="ussdState">Idle</span></div>
+              <div class="fp-text" id="lcd" aria-live="polite">Press Dial to open the Sauti Salama menu.</div>
+              <div class="fp-input-row">
+                <input class="fp-input" id="ussdInput" placeholder="Reply" autocomplete="off" disabled aria-label="USSD reply">
+                <button type="button" class="fp-clear" id="ussdBack" disabled aria-label="Delete last character"></button>
+              </div>
+            </div>
+            <div class="fp-soft">
+              <button type="button" class="btn fp-send" id="dial"></button>
+              <button type="button" class="btn fp-end" id="end" disabled></button>
+            </div>
+            <div class="keypad" id="ussdKeys"></div>
+          </div>
+        </div>
+        <div class="guide">
+          <div><h2>USSD menu</h2><p>Silent, works on any phone without data, and leaves nothing in the call log or inbox.</p></div>
+          <div class="guide-block">
+            <h3>Fastest path: danger alert</h3>
+            <ol class="guide-steps">
+              <li>Press <b>Dial</b>.</li>
+              <li>Send <kbd>1</kbd> for English or <kbd>2</kbd> for Kiswahili.</li>
+              <li>Send <kbd>2</kbd>: <i>I am in danger now</i>.</li>
+              <li>Type an area such as <b>Dandora</b>, or <kbd>0</kbd> to skip.</li>
+            </ol>
+            <button type="button" class="btn btn-secondary btn-sm" id="ussdDemo"></button>
+          </div>
+          <div class="guide-block">
+            <h3>Main menu</h3>
+            <ul class="keys">
+              <li><span><kbd>1</kbd></span><span>Report what happened (5 short questions)</span></li>
+              <li><span><kbd>2</kbd></span><span>I am in danger now</span></li>
+              <li><span><kbd>3</kbd></span><span>Help information</span></li>
+              <li><span><kbd>4</kbd></span><span>Request a call back</span></li>
+              <li><span><kbd>5</kbd></span><span>Case status (needs the reference)</span></li>
+              <li><span><kbd>6</kbd></span><span>Delete my report (needs the reference)</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Voice -->
+      <section class="channel" role="tabpanel" id="panel-voice" aria-labelledby="tab-voice" hidden>
+        <div>
+          <div class="call">
+            <div class="call-top">
+              <span data-logo></span>
+              <div><div class="call-name">Sauti Salama line</div><div class="call-status" id="ivrState">Not connected</div></div>
+              <span class="call-timer" id="ivrTimer"></span>
+            </div>
+            <div class="call-log" id="ivrLog" aria-live="polite"><div class="sys">Press Call to ring the line.</div></div>
+            <div class="keypad" id="ivrKeys"></div>
+            <div class="recorder" id="recorder" hidden>
+              <div class="recorder-head"><span class="rec-dot"></span>Recording: what does the caller say?</div>
+              <select class="select" id="sample" aria-label="Sample statement"></select>
+              <textarea class="textarea" id="transcript" placeholder="Type what the caller says after the beep"></textarea>
+              <button type="button" class="btn btn-primary btn-block" id="sendRec">Finish recording <kbd style="margin-left:4px">#</kbd></button>
+            </div>
+            <div class="call-actions">
+              <button type="button" class="btn btn-success btn-lg" id="call"></button>
+              <button type="button" class="btn btn-danger btn-lg" id="hangup" hidden></button>
+            </div>
+          </div>
+        </div>
+        <div class="guide">
+          <div><h2>Call line</h2><p>For anyone who can talk but may not read or type. Prompts appear as the caller would hear them; press keys when the line asks.</p></div>
+          <div class="guide-block">
+            <h3>Leave a recorded report</h3>
+            <ol class="guide-steps">
+              <li>Press <b>Call</b>, then <kbd>1</kbd> for English or <kbd>2</kbd> for Kiswahili.</li>
+              <li>Press <kbd>1</kbd> to tell the line what happened.</li>
+              <li>Pick a sample or type a statement, then <b>Finish recording</b>.</li>
+              <li>Answer the safety question: <kbd>1</kbd> safe to contact, <kbd>2</kbd> not safe.</li>
+            </ol>
+          </div>
+          <div class="guide-block">
+            <h3>Main menu keys</h3>
+            <ul class="keys">
+              <li><span><kbd>1</kbd></span><span>Tell us what happened (recorded)</span></li>
+              <li><span><kbd>2</kbd></span><span>Hear urgent help information</span></li>
+              <li><span><kbd>3</kbd></span><span>Speak to a counsellor or get a call back</span></li>
+              <li><span><kbd>9</kbd></span><span>Silent alert: hang up and alert a responder quietly</span></li>
+            </ul>
+          </div>
+          <p class="hint">Tip: while the line is waiting for a key, you can also press digits on your keyboard.</p>
+        </div>
+      </section>
+
+      <!-- SMS -->
+      <section class="channel" role="tabpanel" id="panel-sms" aria-labelledby="tab-sms" hidden>
+        <div>
+          <div class="chat">
+            <div class="chat-head"><span data-logo></span><div><b>7262</b><span>Sauti Salama shortcode</span></div></div>
+            <div class="chat-log" id="smsLog" aria-live="polite"><p class="chat-note">Messages you send and replies to this phone appear here.</p></div>
+            <div class="chat-quick" id="quick" aria-label="Quick keywords"></div>
+            <form class="chat-compose" id="smsForm">
+              <label class="sr-only" for="smsText">Message</label>
+              <textarea class="textarea" id="smsText" rows="1" placeholder="Text message"></textarea>
+              <button class="btn btn-primary btn-icon" type="submit" id="smsSend" aria-label="Send SMS"></button>
+            </form>
+          </div>
+        </div>
+        <div class="guide">
+          <div><h2>SMS</h2><p>For anyone who can only text. Any message that is not a keyword is treated as a report.</p></div>
+          <div class="guide-block">
+            <h3>Keywords</h3>
+            <ul class="keys">
+              <li><span><kbd>HELP</kbd><kbd>MSAADA</kbd></span><span>Get verified help information</span></li>
+              <li><span><kbd>YES</kbd><kbd>NDIYO</kbd></span><span>Allow texts to this phone</span></li>
+              <li><span><kbd>STOP</kbd><kbd>FUTA</kbd></span><span>Delete the latest report (or add its reference)</span></li>
+            </ul>
+          </div>
+          <div class="guide-block">
+            <h3>Send a sample report</h3>
+            <div class="btn-row"><select class="select" id="smsSample" aria-label="Sample report" style="flex:1;min-width:200px"></select></div>
+            <label class="field" style="margin-top:12px"><span>Send from a different number <span class="muted">(optional)</span></span><input class="input mono" id="smsFrom" placeholder="Defaults to the survivor's phone" inputmode="tel" autocomplete="off"></label>
+          </div>
+          <div class="guide-block">
+            <h3>Act as a responder</h3>
+            <p class="hint" style="margin-bottom:10px">Responders reply to alerts by SMS from <span class="mono" id="responderPhone"></span>. These act on the most recent case.</p>
+            <div class="btn-row">
+              <button type="button" class="btn btn-secondary btn-sm" data-responder="ACK">Accept latest case (ACK)</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-responder="RESOLVE">Resolve latest case</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="card outbox" aria-labelledby="h-outbox">
+      <div class="card-head"><h3 id="h-outbox"><span data-icon="inbox"></span>Outbox</h3><span class="small muted" id="outCount"></span></div>
+      <div class="outbox-tools">
+        <div class="segmented" id="outFilter" role="group" aria-label="Filter messages"></div>
+        <p class="hint" id="outMode">Every SMS the backend sends, newest first.</p>
+      </div>
+      <div class="outbox-list" id="outbox" aria-live="polite"></div>
+    </aside>
+  </div>
+</main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="assets/ui.js"></script>
+<script>
+const { icon, esc, LOGO, store, toast, time } = UI;
+const $ = (id) => document.getElementById(id);
+const rnd = (p) => p + Math.random().toString(36).slice(2, 10);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const same = (a, b) => String(a).replace(/\D/g, '').slice(-9) === String(b).replace(/\D/g, '').slice(-9);
+const RESPONDER = '+254700000000';
+const SAMPLES = [
+  ['Kiswahili · partner violence, Kayole', 'Naomba msaada. Mume wangu alinipiga tena jana usiku hapa Kayole na anatishia kuniua nikimwambia mtu yeyote. Bado yuko ndani ya nyumba na niko na watoto wawili wadogo.'],
+  ['English · sexual violence, Kibra', 'I was raped by my neighbour last night in Kibra. I have not told anyone. I am scared he will come back. I do not know what to do.'],
+  ['Sheng · threat with a knife, Umoja', 'Manze msee wangu amenichapa vibaya sana leo. Ako na kisu na anasema ataniua nikitoka. Niko Umoja, watoto wako hapa.'],
+  ['English · child abuse, Dandora', 'My daughter is 14. Her uncle in Dandora has been touching her and threatening her since last month. Her mother does not believe her.'],
+  ['English · economic abuse, Githurai', 'My husband took my phone and my salary and locks me in the house. I have nowhere to go with the children. We are in Githurai.'],
+];
+
+// ------------------------------------------------------------------ settings
+$('phone').value = store.get('ss.sim.phone', '+254712345678');
+$('token').value = store.get('ss.sim.token', 'demo-token', true);
+const phone = () => $('phone').value.trim();
+const token = () => $('token').value.trim();
+function syncConsoleLink() { $('consoleLink').href = `dashboard.html?token=${encodeURIComponent(token())}`; }
+$('phone').addEventListener('change', () => store.set('ss.sim.phone', phone()));
+$('token').addEventListener('input', () => { store.set('ss.sim.token', token(), true); syncConsoleLink(); });
+$('token').addEventListener('change', () => { outKey = ''; pollOutbox(); });
+
+async function post(path, params) {
+  // The console token lets simulator traffic through the webhook key check (WEBHOOK_SECRET).
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-dashboard-token': token() }, body: new URLSearchParams(params) });
+  if (r.status === 401) throw new Error('The console token is not correct, so the server refused the webhook. Check it at the top of the page.');
+  if (!r.ok) throw new Error(`The server answered ${r.status}`);
+  return r.text();
+}
+const offline = (e) => toast(`Could not reach the Sauti Salama server. ${e.message || ''}`, 'error', 6000);
+
+// ------------------------------------------------------------------ tabs
+const TABS = ['ussd', 'voice', 'sms'];
+let activeTab = 'ussd';
+function selectTab(name, focus) {
+  activeTab = name;
+  for (const t of TABS) {
+    const tab = $(`tab-${t}`), on = t === name;
+    tab.setAttribute('aria-selected', on);
+    tab.tabIndex = on ? 0 : -1;
+    $(`panel-${t}`).hidden = !on;
+  }
+  if (name === 'sms') $('smsDot').hidden = true;
+  if (focus) $(`tab-${name}`).focus();
+  store.set('ss.sim.tab', name);
+}
+document.querySelector('.tabs').addEventListener('click', (ev) => { const t = ev.target.closest('[data-tab]'); if (t) selectTab(t.dataset.tab); });
+document.querySelector('.tabs').addEventListener('keydown', (ev) => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(ev.key)) return;
+  const i = TABS.indexOf(activeTab) + (ev.key === 'ArrowRight' ? 1 : -1);
+  selectTab(TABS[(i + TABS.length) % TABS.length], true);
+});
+
+// ------------------------------------------------------------------ USSD
+let ussd = { session: null, text: '', busy: false };
+const KEYS = [['1', ''], ['2', 'abc'], ['3', 'def'], ['4', 'ghi'], ['5', 'jkl'], ['6', 'mno'], ['7', 'pqrs'], ['8', 'tuv'], ['9', 'wxyz'], ['*', ''], ['0', '+'], ['#', '']];
+const keyHtml = ([k, sub]) => `<button type="button" class="key" data-key="${k}" disabled>${k}${sub ? `<small>${sub.toUpperCase()}</small>` : ''}</button>`;
+$('ussdKeys').innerHTML = KEYS.map(keyHtml).join('');
+
+const lcd = (t) => { $('lcd').textContent = t; $('lcd').scrollTop = 0; };
+function ussdUi(active) {
+  $('ussdInput').disabled = !active;
+  $('ussdBack').disabled = !active;
+  $('end').disabled = !active;
+  for (const b of $('ussdKeys').querySelectorAll('button')) b.disabled = !active;
+  $('dial').innerHTML = active ? `${icon('send', 'sm')}Send` : `${icon('phone', 'sm')}Dial`;
+  $('ussdState').textContent = active ? 'In session' : 'Idle';
+}
+async function ussdSend(input) {
+  const next = ussd.text === '' ? input : (input === '' ? ussd.text : `${ussd.text}*${input}`);
+  ussd.busy = true;
+  $('ussdState').textContent = 'Sending…';
+  let res;
+  try {
+    res = await post('/webhooks/ussd', { sessionId: ussd.session, serviceCode: '*384*7262#', phoneNumber: phone(), text: next });
+  } catch (e) {
+    ussd.busy = false;
+    $('ussdState').textContent = 'In session';
+    return offline(e);
+  }
+  ussd.busy = false;
+  ussd.text = next;
+  lcd(res.replace(/^(CON|END) /, ''));
+  if (res.startsWith('END')) { ussdStop(); $('ussdState').textContent = 'Session ended'; }
+  else { $('ussdState').textContent = 'In session'; $('ussdInput').focus({ preventScroll: true }); }
+}
+async function ussdStart() {
+  ussd = { session: rnd('ATUid_'), text: '', busy: false };
+  ussdUi(true);
+  $('ussdInput').value = '';
+  lcd('Running USSD code…');
+  await ussdSend('');
+}
+function ussdStop() { ussd.session = null; ussd.text = ''; ussdUi(false); }
+async function ussdSubmit() {
+  if (ussd.busy) return;
+  if (!ussd.session) return ussdStart();
+  const v = $('ussdInput').value.trim();
+  if (!v) { $('ussdInput').focus({ preventScroll: true }); return; }
+  $('ussdInput').value = '';
+  await ussdSend(v);
+}
+$('dial').addEventListener('click', ussdSubmit);
+$('ussdInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ussdSubmit(); } });
+$('end').addEventListener('click', () => { ussdStop(); lcd('Session ended. Press Dial to start again.'); });
+$('ussdBack').addEventListener('click', () => { $('ussdInput').value = $('ussdInput').value.slice(0, -1); $('ussdInput').focus({ preventScroll: true }); });
+$('ussdKeys').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-key]');
+  if (!b || b.disabled) return;
+  $('ussdInput').value += b.dataset.key;
+  $('ussdInput').focus({ preventScroll: true });
+});
+$('ussdDemo').addEventListener('click', async () => {
+  const btn = $('ussdDemo');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    await ussdStart();
+    for (const step of ['1', '2', 'Dandora']) {
+      if (!ussd.session) break;
+      await wait(900);
+      $('ussdInput').value = step;
+      await wait(500);
+      await ussdSubmit();
+    }
+  } finally { btn.disabled = false; }
+});
+
+// ------------------------------------------------------------------ Voice (IVR)
+let ivr = { session: null, pending: null, startedAt: 0, clock: null };
+$('ivrKeys').innerHTML = KEYS.map(keyHtml).join('');
+$('sample').innerHTML = '<option value="">Choose a sample statement…</option>' + SAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
+
+function ivrLog(cls, text) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = text;
+  $('ivrLog').appendChild(d);
+  $('ivrLog').scrollTop = $('ivrLog').scrollHeight;
+}
+function ivrUi(mode) {
+  const connected = mode !== 'idle';
+  $('call').hidden = connected;
+  $('hangup').hidden = !connected;
+  $('recorder').hidden = mode !== 'record';
+  $('ivrKeys').hidden = mode === 'record';
+  for (const b of $('ivrKeys').querySelectorAll('button')) b.disabled = mode !== 'digits';
+  const status = { idle: 'Not connected', ringing: 'Ringing…', busy: 'Connected', digits: 'Waiting for a key press', record: '<span class="rec-dot"></span>Recording' }[mode];
+  $('ivrState').innerHTML = status;
+  if (mode === 'record') { $('transcript').value = ''; $('sample').value = ''; $('transcript').focus({ preventScroll: true }); }
+}
+function handleXml(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const resp = doc.querySelector('Response');
+  ivr.pending = null;
+  if (!resp || !resp.children.length) { ivrLog('sys', 'The line hung up.'); return ivrEnd(); }
+  for (const el of resp.children) {
+    const tag = el.tagName;
+    const cb = () => new URL(el.getAttribute('callbackUrl')).pathname;
+    if (tag === 'Say') ivrLog('line', el.textContent);
+    else if (tag === 'Play') ivrLog('line', `[Recorded prompt: ${el.getAttribute('url')}]`);
+    else if (tag === 'GetDigits') {
+      for (const c of el.children) ivrLog('line', c.tagName === 'Say' ? c.textContent : '[Recorded prompt]');
+      ivr.pending = { type: 'digits', cb: cb() };
+    } else if (tag === 'Record') {
+      for (const c of el.children) ivrLog('line', c.tagName === 'Say' ? c.textContent : '[Recorded prompt]');
+      ivrLog('sys', 'Beep. Recording started.');
+      ivr.pending = { type: 'record', cb: cb() };
+    } else if (tag === 'Dial') ivrLog('sys', `Transferring to counsellor ${el.getAttribute('phoneNumbers')} (the call would be bridged).`);
+  }
+  if (!ivr.pending) { ivrLog('sys', 'Call ended by the line.'); return ivrEnd(); }
+  ivrUi(ivr.pending.type);
+}
+function ivrEnd() {
+  clearInterval(ivr.clock);
+  ivr = { session: null, pending: null, startedAt: 0, clock: null };
+  ivrUi('idle');
+  $('ivrState').textContent = 'Call ended';
+}
+function tick() {
+  const s = Math.floor((Date.now() - ivr.startedAt) / 1000);
+  $('ivrTimer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+async function ivrPost(path, extra) {
+  try {
+    handleXml(await post(path, { isActive: '1', sessionId: ivr.session, callerNumber: phone(), ...extra }));
+  } catch (e) {
+    offline(e);
+    ivrLog('sys', 'Connection problem. The call was dropped.');
+    ivrEnd();
+  }
+}
+$('call').addEventListener('click', async () => {
+  $('ivrLog').innerHTML = '';
+  ivr = { session: rnd('ATVId_'), pending: null, startedAt: Date.now(), clock: setInterval(tick, 1000) };
+  tick();
+  ivrUi('ringing');
+  ivrLog('sys', `Calling from ${phone()}…`);
+  await ivrPost('/webhooks/voice', { destinationNumber: '+254711000000', direction: 'Inbound' });
+});
+$('hangup').addEventListener('click', async () => {
+  if (ivr.session) {
+    const duration = String(Math.max(1, Math.floor((Date.now() - ivr.startedAt) / 1000)));
+    post('/webhooks/voice/events', { isActive: '0', sessionId: ivr.session, callerNumber: phone(), durationInSeconds: duration, callSessionState: 'Completed' }).catch(() => {});
+  }
+  ivrLog('sys', 'You hung up.');
+  ivrEnd();
+});
+async function pressKey(k) {
+  if (!ivr.pending || ivr.pending.type !== 'digits') return;
+  const cb = ivr.pending.cb;
+  ivr.pending = null;
+  ivrUi('busy');
+  ivrLog('you', `Pressed ${k}`);
+  await ivrPost(cb, { dtmfDigits: k });
+}
+$('ivrKeys').addEventListener('click', (ev) => { const b = ev.target.closest('[data-key]'); if (b && !b.disabled) pressKey(b.dataset.key); });
+document.addEventListener('keydown', (ev) => {
+  if (activeTab !== 'voice' || !ivr.pending || ivr.pending.type !== 'digits') return;
+  if (ev.target.closest('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (/^[0-9*#]$/.test(ev.key)) { ev.preventDefault(); pressKey(ev.key); }
+});
+$('sample').addEventListener('change', () => { if ($('sample').value !== '') $('transcript').value = SAMPLES[$('sample').value][1]; });
+$('sendRec').addEventListener('click', async () => {
+  if (!ivr.pending || ivr.pending.type !== 'record') return;
+  const text = $('transcript').value.trim() || 'Nisaidie tafadhali.';
+  const cb = ivr.pending.cb;
+  ivr.pending = null;
+  ivrUi('busy');
+  ivrLog('you', text);
+  const duration = String(Math.max(5, Math.min(180, Math.round(text.split(/\s+/).length / 2.5))));
+  await ivrPost(cb, { recordingUrl: `simulator://recording/${ivr.session}`, durationInSeconds: duration, mockTranscript: text });
+});
+
+// ------------------------------------------------------------------ SMS
+$('quick').innerHTML = ['HELP', 'MSAADA', 'YES', 'NDIYO', 'STOP'].map((k) => `<button type="button" data-quick="${k}">${k}</button>`).join('');
+$('smsSample').innerHTML = '<option value="">Choose a sample…</option>' + SAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
+$('responderPhone').textContent = RESPONDER;
+
+function chat(kind, text, meta) {
+  const log = $('smsLog');
+  log.querySelector('.chat-note.placeholder')?.remove();
+  const d = document.createElement('div');
+  if (kind === 'note') { d.className = 'chat-note'; d.textContent = text; }
+  else { d.className = `bubble ${kind}`; d.textContent = text; if (meta) { const s = document.createElement('small'); s.textContent = meta; d.appendChild(s); } }
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+$('smsLog').querySelector('.chat-note').classList.add('placeholder');
+
+async function sendSms(text) {
+  const from = $('smsFrom').value.trim() || phone();
+  try {
+    await post('/webhooks/sms', { from, to: '7262', text, date: new Date().toISOString(), id: rnd('ATXid_'), linkId: rnd('link_') });
+  } catch (e) { offline(e); return false; }
+  chat('out', text, `${same(from, phone()) ? '' : `from ${from} · `}${time(new Date())}`);
+  setTimeout(pollOutbox, 600);
+  return true;
+}
+$('smsForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const text = $('smsText').value.trim();
+  if (!text) return $('smsText').focus();
+  $('smsSend').disabled = true;
+  if (await sendSms(text)) { $('smsText').value = ''; autosize(); }
+  $('smsSend').disabled = false;
+  $('smsText').focus();
+});
+$('smsText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('smsForm').requestSubmit(); } });
+function autosize() { const t = $('smsText'); t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight + 2, 140)}px`; }
+$('smsText').addEventListener('input', autosize);
+$('quick').addEventListener('click', (ev) => { const b = ev.target.closest('[data-quick]'); if (b) sendSms(b.dataset.quick); });
+$('smsSample').addEventListener('change', () => {
+  if ($('smsSample').value === '') return;
+  $('smsText').value = SAMPLES[$('smsSample').value][1];
+  $('smsSample').value = '';
+  autosize();
+  $('smsText').focus();
+});
+document.querySelector('#panel-sms .guide').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-responder]');
+  if (!b) return;
+  const verb = b.dataset.responder;
+  b.disabled = true;
+  try {
+    const r = await fetch('/api/cases?limit=1', { headers: { 'x-dashboard-token': token() } });
+    if (r.status === 401) return toast('The console token is not correct. Check it at the top of the page.', 'error', 6000);
+    if (!r.ok) throw new Error(`The server answered ${r.status}`);
+    const [c] = await r.json();
+    if (!c) return toast('There are no cases yet. Send a report first.', 'info');
+    await post('/webhooks/sms', { from: RESPONDER, to: '7262', text: `${verb} ${c.ref}`, date: new Date().toISOString(), id: rnd('ATXid_') });
+    chat('note', `Responder ${RESPONDER} replied "${verb} ${c.ref}"`);
+    toast(verb === 'ACK' ? `${c.ref} accepted by the responder.` : `${c.ref} marked resolved by the responder.`, 'ok');
+    setTimeout(pollOutbox, 600);
+  } catch (e) { offline(e); }
+  finally { b.disabled = false; }
+});
+
+// ------------------------------------------------------------------ Outbox
+const KIND = { responder: ['Responder alert', 'tone-brand'], survivor: ['To survivor', 'tone-ok'], system: ['System', 'tone-warn'] };
+const MODE = { console: 'Not delivered: no SMS gateway configured', sandbox: "Sent via Africa's Talking sandbox", live: "Sent via Africa's Talking" };
+const seen = new Set();
+let primed = false, outList = [], outFilter = 'all', outKey = '', fresh = new Set(), outError = '';
+
+function renderOutbox() {
+  const counts = { all: outList.length, responder: 0, survivor: 0, system: 0 };
+  for (const m of outList) counts[m.kind] = (counts[m.kind] || 0) + 1;
+  const rows = outList.filter((m) => outFilter === 'all' || m.kind === outFilter).slice(0, 60);
+  const key = JSON.stringify([outFilter, outError, outList.length, outList[0]?.id, outList.map((m) => m.status).join()]);
+  if (key === outKey) return;
+  outKey = key;
+  $('outFilter').innerHTML = [['all', 'All'], ['responder', 'Responders'], ['survivor', 'Survivor'], ['system', 'System']]
+    .map(([k, label]) => `<button type="button" data-filter="${k}" aria-pressed="${outFilter === k}" title="${counts[k] || 0} message(s)">${label}</button>`).join('');
+  $('outCount').textContent = outList.length ? `${outList.length} message${outList.length === 1 ? '' : 's'}` : '';
+  const modes = [...new Set(outList.map((m) => m.mode))];
+  $('outMode').textContent = modes.length === 1 && MODE[modes[0]] ? `Newest first. ${MODE[modes[0]]}.` : 'Every SMS the backend sends, newest first.';
+
+  if (outError) {
+    $('outbox').innerHTML = `<div class="empty"><div class="empty-icon">${icon('alert', 'lg')}</div><h3>${outError === 'token' ? 'Console token not accepted' : 'Server not reachable'}</h3><p>${outError === 'token' ? 'Check the console token at the top of the page to see outgoing messages.' : 'Start the backend with npm run dev. Retrying automatically.'}</p></div>`;
+    return;
+  }
+  if (!rows.length) {
+    $('outbox').innerHTML = `<div class="empty"><div class="empty-icon">${icon('inbox', 'lg')}</div><h3>${outList.length ? 'No messages of this type' : 'Nothing sent yet'}</h3><p>${outList.length ? 'Choose another filter.' : 'Make a report on any channel and the alert to responders will appear here.'}</p></div>`;
+    return;
+  }
+  $('outbox').innerHTML = rows.map((m) => {
+    const [label, tone] = KIND[m.kind] || [m.kind, 'tone-neutral'];
+    return `<article class="msg k-${esc(m.kind)}${fresh.has(m.id) ? ' is-new' : ''}">
+      <div class="msg-head"><span class="badge ${tone}">${esc(label)}</span><span class="mono">to ${esc(m.to)}</span><time datetime="${esc(m.at)}">${esc(time(m.at))}</time></div>
+      <pre class="msg-body">${esc(m.message)}</pre>
+      <div class="msg-foot">${esc(m.mode)} · ${esc(m.status)}</div>
+    </article>`;
+  }).join('');
+  fresh.clear();
+}
+$('outFilter').addEventListener('click', (ev) => { const b = ev.target.closest('[data-filter]'); if (!b) return; outFilter = b.dataset.filter; renderOutbox(); });
+
+async function pollOutbox() {
+  let list;
+  try {
+    const r = await fetch('/api/outbox', { headers: { 'x-dashboard-token': token() } });
+    if (r.status === 401) { outError = 'token'; return renderOutbox(); }
+    if (!r.ok) throw new Error(String(r.status));
+    list = await r.json();
+    outError = '';
+  } catch { outError = 'offline'; return renderOutbox(); }
+  const me = $('smsFrom').value.trim() || phone();
+  for (const m of [...list].reverse()) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    if (!primed) continue;
+    fresh.add(m.id);
+    if (m.kind !== 'responder' && same(m.to, me)) {
+      chat('in', m.message, time(m.at));
+      if (activeTab !== 'sms') $('smsDot').hidden = false;
+    }
+  }
+  primed = true;
+  outList = list;
+  renderOutbox();
+}
+
+// ------------------------------------------------------------------ boot
+for (const el of document.querySelectorAll('[data-logo]')) el.outerHTML = LOGO;
+for (const el of document.querySelectorAll('[data-icon]')) el.outerHTML = icon(el.dataset.icon);
+$('consoleLink').innerHTML = `<span class="hide-sm">Open responder console</span>${icon('external', 'sm')}`;
+$('consoleLink').setAttribute('aria-label', 'Open responder console (new tab)');
+$('tab-ussd').innerHTML = `${icon('grid', 'sm')}USSD <span class="code">*384*7262#</span>`;
+$('tab-voice').innerHTML = `${icon('phone', 'sm')}Call line`;
+$('tab-sms').innerHTML = `${icon('message', 'sm')}SMS <span class="tab-dot" id="smsDot" hidden></span>`;
+$('call').innerHTML = `${icon('phone', 'sm')}Call`;
+$('hangup').innerHTML = `${icon('phoneOff', 'sm')}Hang up`;
+$('end').innerHTML = `${icon('phoneOff', 'sm')}End`;
+$('ussdBack').innerHTML = icon('delete', 'sm');
+$('ussdDemo').innerHTML = `${icon('sparkle', 'sm')}Play this for me`;
+$('smsSend').innerHTML = icon('send', 'sm');
+syncConsoleLink();
+ussdUi(false);
+ivrUi('idle');
+selectTab(TABS.includes(store.get('ss.sim.tab')) ? store.get('ss.sim.tab') : 'ussd');
+pollOutbox();
+setInterval(pollOutbox, 2000);
+</script>
+</body>
+</html>
