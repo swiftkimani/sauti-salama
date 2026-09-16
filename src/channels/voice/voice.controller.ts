@@ -1,4 +1,4 @@
-import { Body, Controller, Header, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Header, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { WebhookGuard } from '../webhook.guard';
 import { VoiceService } from './voice.service';
 
@@ -11,25 +11,25 @@ import { VoiceService } from './voice.service';
 export class VoiceController {
   constructor(private readonly voice: VoiceService) {}
 
-  @Post() @Header('Content-Type', 'application/xml')
+  @Post() @HttpCode(200) @Header('Content-Type', 'application/xml')
   entry(@Body() body: Record<string, string>) { return this.voice.entry(body); }
 
-  @Post('lang') @Header('Content-Type', 'application/xml')
+  @Post('lang') @HttpCode(200) @Header('Content-Type', 'application/xml')
   lang(@Body() body: Record<string, string>) { return this.voice.language(body); }
 
-  @Post('menu') @Header('Content-Type', 'application/xml')
+  @Post('menu') @HttpCode(200) @Header('Content-Type', 'application/xml')
   menu(@Body() body: Record<string, string>) { return this.voice.menuChoice(body); }
 
-  @Post('info') @Header('Content-Type', 'application/xml')
+  @Post('info') @HttpCode(200) @Header('Content-Type', 'application/xml')
   info(@Body() body: Record<string, string>) { return this.voice.infoChoice(body); }
 
-  @Post('recording') @Header('Content-Type', 'application/xml')
+  @Post('recording') @HttpCode(200) @Header('Content-Type', 'application/xml')
   recording(@Body() body: Record<string, string>) { return this.voice.recording(body); }
 
-  @Post('consent') @Header('Content-Type', 'application/xml')
+  @Post('consent') @HttpCode(200) @Header('Content-Type', 'application/xml')
   consent(@Body() body: Record<string, string>) { return this.voice.consent(body); }
 
   /** Optional "call ended" event URL (isActive=0). */
-  @Post('events') @Header('Content-Type', 'text/plain')
+  @Post('events') @HttpCode(200) @Header('Content-Type', 'text/plain')
   events(@Body() body: Record<string, string>) { this.voice.entry({ ...body, isActive: '0' }); return 'ok'; }
 }
