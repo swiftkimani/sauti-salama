@@ -1,27 +1,41 @@
 import 'reflect-metadata';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { AppModule } from './app.module';
-import { withWebhookKey } from './channels/webhook.guard';
+import { VoiceService } from './channels/voice/voice.service';
+import { assertProductionConfig, dashboardToken, isProduction, trustProxySetting } from './config/env';
+import { buildOpenApi } from './config/openapi';
 
 async function bootstrap() {
+  assertProductionConfig();
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'warn', 'error'],
   });
+  app.set('trust proxy', trustProxySetting());
   app.useStaticAssets(join(__dirname, '..', 'public'));
-  app.enableCors();
+  // The console is served from this origin. Cross-origin use is opt-in in production.
+  const origins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
+  app.enableCors({ origin: origins.length ? origins : !isProduction() });
+  app.enableShutdownHooks();
+  const docs = !isProduction() || process.env.API_DOCS === 'true';
+  if (docs) SwaggerModule.setup('api/docs', app, buildOpenApi(app));
   const port = Number(process.env.PORT || 3000);
   await app.listen(port);
+
   const base = `http://localhost:${port}`;
-  const token = process.env.DASHBOARD_TOKEN || 'demo-token';
+  const token = dashboardToken();
   console.log(`\nSauti Salama backend listening on ${base}`);
   console.log(`  Responder console : ${base}/dashboard.html${token === 'demo-token' ? '?token=demo-token' : ' (sign in with DASHBOARD_TOKEN from .env)'}`);
   console.log(`  Channel simulator : ${base}/simulator.html`);
+  if (docs) console.log(`  API docs          : ${base}/api/docs`);
 
+  // The secret is never printed: logs get copied and shipped. `npm run at:check` prints the full URLs locally.
   const publicBase = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-  const hook = (path: string) => withWebhookKey(`${publicBase || base}${path}`);
-  console.log(`\n  Africa's Talking callback URLs (paste these into the dashboard):`);
+  const hook = (path: string) => `${publicBase || base}${path}${process.env.WEBHOOK_SECRET ? '?key=<WEBHOOK_SECRET>' : ''}`;
+  console.log(`\n  Africa's Talking callback URLs (\`npm run at:check\` prints them ready to paste):`);
   console.log(`    USSD                 : ${hook('/webhooks/ussd')}`);
   console.log(`    SMS incoming         : ${hook('/webhooks/sms')}`);
   console.log(`    SMS delivery reports : ${hook('/webhooks/sms/delivery')}`);
@@ -33,7 +47,14 @@ async function bootstrap() {
     console.warn('  WARNING: the server is public but DASHBOARD_TOKEN is still demo-token. Set a strong token in .env.\n');
   }
   if (publicBase.startsWith('https://') && !process.env.WEBHOOK_SECRET) {
-    console.warn('  WARNING: the webhooks are public but WEBHOOK_SECRET is not set, so anyone can post fake reports.\n');
+    console.warn('  WARNING: the webhooks are public but WEBHOOK_SECRET is not set, so anyone can post fake reports. (With NODE_ENV=production they are refused.)\n');
   }
+  for (const w of app.get(VoiceService).readiness().warnings) console.warn(`  NOTE: ${w}`);
 }
-bootstrap();
+
+process.on('unhandledRejection', (e) => new Logger('Process').error(`Unhandled rejection: ${e instanceof Error ? e.stack : e}`));
+
+bootstrap().catch((e) => {
+  console.error(`\nSauti Salama did not start: ${e instanceof Error ? e.message : e}\n`);
+  process.exit(1);
+});

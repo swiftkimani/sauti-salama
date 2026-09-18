@@ -20,21 +20,22 @@ Everything survivor-facing is delivered by the telco network (voice, USSD, SMS).
 
 | Component | Responsibility | Code |
 |---|---|---|
-| Voice IVR | Language menu, main menu, record report, urgent info, counsellor transfer / call-back, silent alert (9), consent | `src/channels/voice` |
+| Call line | No menu: greet, listen, one question at a time, contact and police consent in the caller's own words, closing. Counsellors ring first when configured | `src/channels/voice` |
+| Call brain | Per turn: refresh the brief, decide the next question or stop. Channel-independent, so a real-time agent can drive it | `src/ai/conversation.service.ts`, `src/ai/conversation.ts` |
 | USSD | `*384*7262#` state machine: report, danger now, info, call back, status, delete | `src/channels/ussd` |
-| SMS | Inbound keywords for survivors (HELP, YES, STOP) and responders (ACK, RESOLVE); free-text reports | `src/channels/sms` |
-| Transcription | Recording URL -> text (Whisper large v3 on Groq), mock in the simulator | `src/ai/transcription.service.ts` |
+| SMS | Inbound keywords for survivors (HELP, YES, POLICE, STOP; same phone only) and registered responders (ACK, RESOLVE); free-text reports | `src/channels/sms` |
+| Transcription | Recording URL (allow-listed hosts only) -> text (Whisper large v3 on Groq), simulator text in development; a failure makes an urgent untranscribed case | `src/ai/transcription.service.ts` |
 | Triage | Rules floor + Groq JSON-schema brief (Claude optional), validated and merged, overrides recorded in `safety_floor` | `src/ai/rules.ts`, `src/ai/triage.service.ts`, `src/ai/prompts.ts` |
 | Referral engine | Triage -> ordered bilingual next steps + verified service per step | `src/cases/referral.service.ts` |
-| Notify | Tier-1 SMS to ward responders, escalation timer to Tier 2, survivor SMS only with consent | `src/cases/notify.service.ts` |
+| Notify | Tier-1 SMS to ward responders (in parallel, per-recipient outcome audited), escalation deadline stored on the case and acted on by a sweeper (retried if Tier 2 cannot be reached), survivor SMS only with consent | `src/cases/notify.service.ts` |
 | Case store | Encrypted case, audit events, retention purge, erasure | `src/cases/*`, `src/entities/*` |
 | Directory | Verified support services, seeded | `src/resources` |
-| Console | Responder view, audited actions | `public/dashboard.html`, `src/api` |
+| Console | Responder view, audited actions; `/api/health` (public, database ping) and `/api/status` (token) | `public/dashboard.html`, `src/api` |
 | Simulator | Reproduces Africa's Talking payloads locally | `public/simulator.html` |
 
 ## 3. Sequences
 
-### 3.1 Voice: recorded report
+### 3.1 Voice: a call taken by the AI
 
 ```mermaid
 sequenceDiagram
@@ -46,29 +47,30 @@ sequenceDiagram
   participant R as Tier-1 responder
   S->>AT: calls the line
   AT->>B: POST /webhooks/voice (isActive=1)
-  B-->>AT: GetDigits: "For English press 1, Kiswahili 2"
-  AT->>B: POST /voice/lang (dtmfDigits)
-  B-->>AT: GetDigits: main menu
-  AT->>B: POST /voice/menu (1)
-  B-->>AT: Record: "After the beep, tell us what happened..."
-  AT->>B: POST /voice/recording (recordingUrl)
-  B->>B: create case PROCESSING, reference SS-XXXX
-  B-->>AT: GetDigits: "Your reference is S S dash ... Is it safe to call this phone? 1/2"
-  par background
-    B->>W: transcribe(recordingUrl)
-    W-->>B: text
-    B->>C: triage(text) with rules floor
-    C-->>B: JSON brief
-    B->>B: pathway, status OPEN, audit events
-    B->>R: SMS alert (masked, no phone number)
-    B->>B: start escalation timer
-  end
-  AT->>B: POST /voice/consent (1 or 2)
-  B-->>AT: Say closing message
+  B->>B: open case (PROCESSING, reference SS-XXXX, escalation deadline)
+  B-->>AT: Record: "Sauti Salama. You are safe here. Tell me what is happening."
+  S->>AT: speaks
+  AT->>B: POST /voice/turn (recordingUrl)
+  B->>W: transcribe(recordingUrl)
+  W-->>B: text
+  B->>C: brief + next question (rules floor applied)
+  C-->>B: JSON: brief, next_question, enough_information
+  B->>B: case OPEN, pathway, audit events
+  B->>R: SMS alert (masked, no phone number)
+  B-->>AT: Record: the next question
+  Note over S,B: repeats until the brief is enough (CALL_MAX_QUESTIONS)
+  B-->>AT: Say reference + Record: "Is it safe to call or text this phone?"
+  AT->>B: POST /voice/turn ("yes" / "hapana")
+  B-->>AT: Record: "Do you want help reporting to the police?"
+  AT->>B: POST /voice/turn
+  B-->>AT: Say: the reviewed facts that apply, then the closing
   R->>B: SMS "ACK SS-XXXX"
-  B->>B: ACKNOWLEDGED, timer cancelled
+  B->>B: ACKNOWLEDGED, escalation cleared
   B-->>S: SMS "responder accepted" (only if consented)
 ```
+
+A caller who says nothing twice becomes a silent, critical alert. A caller who hangs up at any point still leaves the
+case opened at the first line, which escalates on its own if nobody accepts it.
 
 ### 3.2 USSD: "I am in danger NOW"
 
@@ -184,5 +186,5 @@ This makes the AI a strict improvement and never a single point of failure.
 
 ## 7. Deployment
 
-* PoC: `npm start` anywhere with Node 18+, file database, `ngrok` for Africa's Talking callbacks.
-* Production shape: Docker image (multi-stage, `Dockerfile`), PostgreSQL (`docker-compose.yml`), behind Nginx/Traefik with TLS on a Contabo VPS; webhook endpoints restricted to Africa's Talking IPs; encryption key and pepper from a secrets store; daily encrypted backups with the same retention window.
+* PoC: `npm start` anywhere with Node 18+, file database, `npm run live` (cloudflared) for Africa's Talking callbacks.
+* Production shape: Docker image (multi-stage, non-root, `HEALTHCHECK`), PostgreSQL with migrations (`docker-compose.yml`), `NODE_ENV=production` start-up checks, behind Nginx/Traefik with TLS. Planned but not in the code: webhook endpoints restricted to Africa's Talking IPs at the proxy, encryption key and pepper from a secrets store, and encrypted backups kept no longer than the retention window. The procedures are in [RUNBOOK.md](RUNBOOK.md).

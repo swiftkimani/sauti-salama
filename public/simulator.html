@@ -203,7 +203,7 @@
           <div class="guide-block">
             <h3>Main menu</h3>
             <ul class="keys">
-              <li><span><kbd>1</kbd></span><span>Report what happened (5 short questions)</span></li>
+              <li><span><kbd>1</kbd></span><span>Report what happened (6 short questions)</span></li>
               <li><span><kbd>2</kbd></span><span>I am in danger now</span></li>
               <li><span><kbd>3</kbd></span><span>Help information</span></li>
               <li><span><kbd>4</kbd></span><span>Request a call back</span></li>
@@ -238,26 +238,25 @@
           </div>
         </div>
         <div class="guide">
-          <div><h2>Call line</h2><p>For anyone who can talk but may not read or type. Prompts appear as the caller would hear them; press keys when the line asks.</p></div>
+          <div><h2>Call line</h2><p>There is no menu. The line answers, listens, and asks one question at a time, the way an emergency call is taken. What the caller hears appears on the phone.</p></div>
           <div class="guide-block">
-            <h3>Leave a recorded report</h3>
+            <h3>How a call goes</h3>
             <ol class="guide-steps">
-              <li>Press <b>Call</b>, then <kbd>1</kbd> for English or <kbd>2</kbd> for Kiswahili.</li>
-              <li>Press <kbd>1</kbd> to tell the line what happened.</li>
-              <li>Pick a sample or type a statement, then <b>Finish recording</b>.</li>
-              <li>Answer the safety question: <kbd>1</kbd> safe to contact, <kbd>2</kbd> not safe.</li>
+              <li>Press <b>Call</b>. The line greets the caller in English and Kiswahili and listens.</li>
+              <li>Pick a sample or type what the caller says, then <b>Finish recording</b>.</li>
+              <li>Responders are alerted on that first sentence. The line keeps asking one question at a time.</li>
+              <li>At the end it asks two questions in words, not keys: is this phone safe to contact, and does the caller want help reporting to the police. Answer &ldquo;yes&rdquo; / &ldquo;ndiyo&rdquo; or &ldquo;no&rdquo; / &ldquo;hapana&rdquo;.</li>
             </ol>
           </div>
           <div class="guide-block">
-            <h3>Main menu keys</h3>
+            <h3>Worth trying</h3>
             <ul class="keys">
-              <li><span><kbd>1</kbd></span><span>Tell us what happened (recorded)</span></li>
-              <li><span><kbd>2</kbd></span><span>Hear urgent help information</span></li>
-              <li><span><kbd>3</kbd></span><span>Speak to a counsellor or get a call back</span></li>
-              <li><span><kbd>9</kbd></span><span>Silent alert: hang up and alert a responder quietly</span></li>
+              <li><span>&nbsp;</span><span>Finish recording twice with the box empty: a caller who cannot speak becomes a silent, critical alert.</span></li>
+              <li><span>&nbsp;</span><span>Answer in Kiswahili or Sheng: the line replies in the caller's language.</span></li>
+              <li><span>&nbsp;</span><span>Hang up after one sentence: the case is already open and escalates on its own.</span></li>
             </ul>
           </div>
-          <p class="hint">Tip: while the line is waiting for a key, you can also press digits on your keyboard.</p>
+          <p class="hint">Without an AI key the line asks the reviewed fallback questions; with one it asks its own. Anything factual it says is reviewed text either way.</p>
         </div>
       </section>
 
@@ -321,7 +320,20 @@ const $ = (id) => document.getElementById(id);
 const rnd = (p) => p + Math.random().toString(36).slice(2, 10);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const same = (a, b) => String(a).replace(/\D/g, '').slice(-9) === String(b).replace(/\D/g, '').slice(-9);
-const RESPONDER = '+254700000000';
+// Mirrors src/common/phone.ts: the outbox only shows masked numbers (+2547*****678).
+const normalizePhone = (raw) => {
+  const p = String(raw || '').replace(/[\s\-()]/g, '');
+  if (p.startsWith('+')) return p;
+  if (p.startsWith('00')) return '+' + p.slice(2);
+  if (p.startsWith('0') && p.length === 10) return '+254' + p.slice(1);
+  if (p.startsWith('254')) return '+' + p;
+  if (/^[17]\d{8}$/.test(p)) return '+254' + p;
+  return p;
+};
+const maskPhone = (p) => (p.length <= 6 ? p.slice(0, 2) + '***' : p.slice(0, 5) + '*'.repeat(Math.max(2, p.length - 8)) + p.slice(-3));
+const sameMasked = (masked, full) => masked === maskPhone(normalizePhone(full));
+// Only registered responder phones may ACK or RESOLVE by SMS; the real one is loaded from the server.
+let RESPONDER = '+254700000000';
 const SAMPLES = [
   ['Kiswahili · partner violence, Kayole', 'Naomba msaada. Mume wangu alinipiga tena jana usiku hapa Kayole na anatishia kuniua nikimwambia mtu yeyote. Bado yuko ndani ya nyumba na niko na watoto wawili wadogo.'],
   ['English · sexual violence, Kibra', 'I was raped by my neighbour last night in Kibra. I have not told anyone. I am scared he will come back. I do not know what to do.'],
@@ -477,6 +489,8 @@ function handleXml(xml) {
   for (const el of resp.children) {
     const tag = el.tagName;
     const cb = () => new URL(el.getAttribute('callbackUrl')).pathname;
+    // Anything after a key press or recording only plays if the caller does nothing, so do not show it as said.
+    if (ivr.pending) { if (tag === 'Say') ivrLog('sys', `If no key is pressed, the line says: "${el.textContent}"`); continue; }
     if (tag === 'Say') ivrLog('line', el.textContent);
     else if (tag === 'Play') ivrLog('line', `[Recorded prompt: ${el.getAttribute('url')}]`);
     else if (tag === 'GetDigits') {
@@ -556,6 +570,16 @@ $('sendRec').addEventListener('click', async () => {
 $('quick').innerHTML = ['HELP', 'MSAADA', 'YES', 'NDIYO', 'STOP'].map((k) => `<button type="button" data-quick="${k}">${k}</button>`).join('');
 $('smsSample').innerHTML = '<option value="">Choose a sample…</option>' + SAMPLES.map(([label], i) => `<option value="${i}">${esc(label)}</option>`).join('');
 $('responderPhone').textContent = RESPONDER;
+async function loadResponder() {
+  try {
+    const r = await fetch('/api/responders', { headers: { 'x-dashboard-token': token() } });
+    if (!r.ok) return;
+    const list = await r.json();
+    const first = list.find((x) => x.active && x.tier === 1) || list.find((x) => x.active);
+    if (first) { RESPONDER = first.phone; $('responderPhone').textContent = RESPONDER; }
+  } catch { /* keep the default */ }
+}
+loadResponder();
 
 function chat(kind, text, meta) {
   const log = $('smsLog');
@@ -608,6 +632,7 @@ document.querySelector('#panel-sms .guide').addEventListener('click', async (ev)
     if (!r.ok) throw new Error(`The server answered ${r.status}`);
     const [c] = await r.json();
     if (!c) return toast('There are no cases yet. Send a report first.', 'info');
+    await loadResponder();
     await post('/webhooks/sms', { from: RESPONDER, to: '7262', text: `${verb} ${c.ref}`, date: new Date().toISOString(), id: rnd('ATXid_') });
     chat('note', `Responder ${RESPONDER} replied "${verb} ${c.ref}"`);
     toast(verb === 'ACK' ? `${c.ref} accepted by the responder.` : `${c.ref} marked resolved by the responder.`, 'ok');
@@ -670,7 +695,7 @@ async function pollOutbox() {
     seen.add(m.id);
     if (!primed) continue;
     fresh.add(m.id);
-    if (m.kind !== 'responder' && same(m.to, me)) {
+    if (m.kind !== 'responder' && sameMasked(m.to, me)) {
       chat('in', m.message, time(m.at));
       if (activeTab !== 'sms') $('smsDot').hidden = false;
     }

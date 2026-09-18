@@ -9,5 +9,6 @@ import { VoiceService } from './voice/voice.service';
 @Module({
   controllers: [VoiceController, UssdController, SmsController],
   providers: [VoiceService, UssdService, SmsInboundService],
+  exports: [VoiceService],
 })
 export class ChannelsModule {}

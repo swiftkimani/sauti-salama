@@ -7,6 +7,8 @@ import { Lang } from '../ai/triage.types';
  */
 type LT = { en: string; sw: string };
 export const t = (lang: Lang, x: LT) => (lang === 'sw' ? x.sw : x.en);
+/** "Go to a clinic" -> "Go to a clinic. "; nothing when there is no step (e.g. a call-back request). */
+const sentence = (s: string) => (s ? `${s}. ` : '');
 
 export const USSD = {
   langMenu: 'CON Sauti Salama\n1. English\n2. Kiswahili',
@@ -28,9 +30,13 @@ export const USSD = {
   },
   area: { en: 'CON Type your area or ward (e.g. Kayole):', sw: 'CON Andika eneo lako (mfano Kayole):' },
   safe: { en: 'CON Is it safe to send SMS to this phone?\n1. Yes\n2. No', sw: 'CON Ni salama kutuma SMS kwa simu hii?\n1. Ndiyo\n2. Hapana' },
+  police: {
+    en: 'CON Do you want your responder to help you report to the police?\n1. Yes\n2. No / not now',
+    sw: 'CON Unataka mhudumu wako akusaidie kuripoti kwa polisi?\n1. Ndiyo\n2. Hapana / si sasa',
+  },
   created: (lang: Lang, ref: string, step: string) => t(lang, {
-    en: `END Ref ${ref}. A trusted responder has been alerted. ${step}. Free help 24hrs: 1195.`,
-    sw: `END Nambari ${ref}. Mhudumu wa kuaminika ameshaarifiwa. ${step}. Msaada bila malipo saa 24: 1195.`,
+    en: `END Ref ${ref}. A trusted responder has been alerted. ${sentence(step)}Free help 24hrs: 1195.`,
+    sw: `END Nambari ${ref}. Mhudumu wa kuaminika ameshaarifiwa. ${sentence(step)}Msaada bila malipo saa 24: 1195.`,
   }),
   dangerArea: { en: 'CON Type your area, or 0 to skip:', sw: 'CON Andika eneo lako, au 0 kuruka:' },
   danger: (lang: Lang, ref: string) => t(lang, {
@@ -63,42 +69,8 @@ export const USSD = {
   notFound: { en: 'END We could not find a report with that reference for this phone.', sw: 'END Hatukupata ripoti yenye nambari hiyo kwa simu hii.' },
   deleted: (lang: Lang, ref: string) => t(lang, { en: `END Report ${ref} and all its data have been permanently deleted.`, sw: `END Ripoti ${ref} na data yake yote imefutwa kabisa.` }),
   invalid: { en: 'END Invalid choice. Dial again to start over. Free help: 1195.', sw: 'END Chaguo si sahihi. Piga tena kuanza upya. Msaada: 1195.' },
-};
-
-export const VOICE = {
-  welcome: 'Welcome to Sauti Salama. This is a safe and confidential line. For English, press 1. Kwa Kiswahili, bonyeza 2.',
-  main: {
-    en: 'Press 1 to tell us what happened. Press 2 to hear urgent help information. Press 3 to speak with a counsellor. If you cannot talk safely, press 9 now and we will alert a responder quietly.',
-    sw: 'Bonyeza 1 kutuambia kilichotokea. Bonyeza 2 kusikia maelezo ya msaada wa dharura. Bonyeza 3 kuzungumza na mshauri. Ikiwa huwezi kuongea kwa usalama, bonyeza 9 sasa na tutamjulisha mhudumu kimya kimya.',
-  },
-  recordPrompt: {
-    en: 'Take your time. After the beep, tell us what happened, where you are, and whether you are safe right now. Press the hash key when you are done.',
-    sw: 'Chukua muda wako. Baada ya mlio, tuambie kilichotokea, uko wapi, na kama uko salama sasa hivi. Bonyeza alama ya reli ukimaliza.',
-  },
-  afterRecord: (lang: Lang, refSpelled: string) => t(lang, {
-    en: `Thank you. Your reference number is ${refSpelled}. A trusted responder in your area is being alerted. Is it safe for us to call or text this phone? Press 1 for yes, or 2 for no.`,
-    sw: `Asante. Nambari yako ya rejeleo ni ${refSpelled}. Mhudumu wa kuaminika katika eneo lako anaarifiwa. Ni salama kwetu kupiga simu au kutuma SMS kwa simu hii? Bonyeza 1 kwa ndiyo, au 2 kwa hapana.`,
-  }),
-  consentYes: {
-    en: 'Thank you. Your responder will contact you on this number. If it stops being safe, dial this line again and press 9. Free help any time on 1 1 9 5. Stay safe.',
-    sw: 'Asante. Mhudumu wako atawasiliana nawe kwa nambari hii. Ikiwa haitakuwa salama tena, piga simu hii tena na ubonyeze 9. Msaada wa bure wakati wowote: 1 1 9 5. Uwe salama.',
-  },
-  consentNo: {
-    en: 'Understood. Nobody will call or text this phone. Your responder will use your reference number, and you can dial this line again any time to check progress. You may want to delete this call from your call log. Free help any time on 1 1 9 5.',
-    sw: 'Sawa. Hakuna atakayepiga au kutuma SMS kwa simu hii. Mhudumu wako atatumia nambari yako ya rejeleo, na unaweza kupiga simu hii tena wakati wowote kuangalia maendeleo. Unaweza kufuta simu hii kwenye orodha ya simu zako. Msaada wa bure wakati wowote: 1 1 9 5.',
-  },
-  info: {
-    en: 'If sexual violence happened, go to any health facility within 72 hours for free H I V prevention and emergency contraception, and ask for the P R C form. If you are in danger now, call 9 9 9 or 1 1 2. Free counselling any time on 1 1 9 5. For a child, call Childline on 1 1 6.',
-    sw: 'Ikiwa kumetokea dhuluma ya kingono, nenda kituo chochote cha afya ndani ya saa 72 kwa dawa ya bure ya kuzuia HIV na mimba, na uombe fomu ya PRC. Ikiwa uko hatarini sasa, piga 9 9 9 au 1 1 2. Ushauri wa bure wakati wowote: 1 1 9 5. Kwa mtoto, piga Childline 1 1 6.',
-  },
-  infoMenu: { en: 'Press 1 to hear that again, 2 to leave a report, or hang up.', sw: 'Bonyeza 1 kusikia tena, 2 kuacha ripoti, au kata simu.' },
-  transfer: { en: 'Connecting you to a counsellor now. Please hold.', sw: 'Tunakuunganisha na mshauri sasa. Tafadhali subiri.' },
-  callbackLogged: (lang: Lang, refSpelled: string) => t(lang, {
-    en: `All counsellors are busy right now. We have logged your request, reference ${refSpelled}, and a trusted responder will call you back. Is it safe to call this phone? Press 1 for yes, 2 for no.`,
-    sw: `Washauri wote wako na simu nyingine sasa. Tumeandikisha ombi lako, nambari ${refSpelled}, na mhudumu wa kuaminika atakupigia. Ni salama kupiga simu hii? Bonyeza 1 kwa ndiyo, 2 kwa hapana.`,
-  }),
-  goodbye: { en: 'Free help any time on 1 1 9 5. Goodbye, and stay safe.', sw: 'Msaada wa bure wakati wowote: 1 1 9 5. Kwaheri, uwe salama.' },
-  invalid: { en: 'Sorry, that is not a valid choice.', sw: 'Samahani, hicho si chaguo sahihi.' },
+  /** Shown when the server fails mid-session. The language may not be known yet, so both. */
+  failure: 'END Sorry, something went wrong. Please dial again.\nSamahani, kuna tatizo. Tafadhali piga tena.\nFree help / Msaada: 1195',
 };
 
 export const SMS = {
@@ -107,8 +79,8 @@ export const SMS = {
     sw: `Sauti Salama ${ref}: imepokelewa. Mhudumu wa kuaminika ameshaarifiwa. Jibu NDIYO ikiwa ni salama kutuma SMS hapa. Msaada saa 24: 1195. Futa SMS hii ukihitaji.`,
   }),
   nextSteps: (lang: Lang, ref: string, steps: string) => t(lang, {
-    en: `Sauti Salama ${ref}: ${steps}. Free help 24hrs: 1195. Reply STOP ${ref} to delete your report.`,
-    sw: `Sauti Salama ${ref}: ${steps}. Msaada saa 24: 1195. Jibu FUTA ${ref} kufuta ripoti yako.`,
+    en: `Sauti Salama ${ref}: ${sentence(steps)}Free help 24hrs: 1195. Reply STOP ${ref} to delete your report.`,
+    sw: `Sauti Salama ${ref}: ${sentence(steps)}Msaada saa 24: 1195. Jibu FUTA ${ref} kufuta ripoti yako.`,
   }),
   info: (lang: Lang) => t(lang, {
     en: 'Sauti Salama: free help 24hrs on 1195. After sexual violence go to any health facility within 72hrs (free PEP + PRC form). Danger now: 999/112. Child: 116. Delete this SMS if needed.',
@@ -121,6 +93,9 @@ export const SMS = {
   ackConfirm: (ref: string, name: string) => `Sauti Salama: ACK recorded for ${ref} by ${name}. Open the console for details. Reply RESOLVE ${ref} when the survivor is safe.`,
   resolveConfirm: (ref: string) => `Sauti Salama: ${ref} marked resolved. Thank you.`,
   deleted: (lang: Lang, ref: string) => t(lang, { en: `Sauti Salama: report ${ref} and all its data were permanently deleted.`, sw: `Sauti Salama: ripoti ${ref} na data yake yote imefutwa kabisa.` }),
+  policeChoice: (lang: Lang, ref: string, yes: boolean) => t(lang, yes
+    ? { en: `Sauti Salama ${ref}: noted. Your responder will help you report to the police.`, sw: `Sauti Salama ${ref}: tumepokea. Mhudumu wako atakusaidia kuripoti kwa polisi.` }
+    : { en: `Sauti Salama ${ref}: noted. Nobody will involve the police unless you ask.`, sw: `Sauti Salama ${ref}: tumepokea. Hakuna atakayehusisha polisi usipoomba.` }),
   unknownRef: 'Sauti Salama: reference not found for this number.',
 };
 

@@ -1,0 +1,742 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/webhooks/voice": {
+      "post": {
+        "operationId": "VoiceController_entry",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/voice/turn": {
+      "post": {
+        "operationId": "VoiceController_turn",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/voice/events": {
+      "post": {
+        "operationId": "VoiceController_events",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/ussd": {
+      "post": {
+        "operationId": "UssdController_handle",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UssdCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "CON Sauti Salama\n1. English\n2. Kiswahili"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/sms": {
+      "post": {
+        "operationId": "SmsController_handle",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsInboundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "ok": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/sms/delivery": {
+      "post": {
+        "operationId": "SmsController_delivery",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "description": "WEBHOOK_SECRET",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "ok": true,
+                    "matched": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "ApiController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "ok": true
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "ok": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/api/status": {
+      "get": {
+        "operationId": "ApiController_status",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/resources": {
+      "get": {
+        "operationId": "ApiController_resourcesList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/api/responders": {
+      "get": {
+        "operationId": "ApiController_respondersList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/outbox": {
+      "get": {
+        "operationId": "ApiController_outbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/cases": {
+      "get": {
+        "operationId": "ApiController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/cases/{ref}": {
+      "get": {
+        "operationId": "ApiController_detail",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "Case reference (case-insensitive).",
+            "schema": {
+              "example": "SS-4K2F",
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "required": false,
+            "in": "query",
+            "description": "Name recorded in the audit trail. Defaults to \"console\".",
+            "schema": {
+              "maxLength": 80,
+              "example": "Amina W.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ApiController_erase",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "Case reference (case-insensitive).",
+            "schema": {
+              "example": "SS-4K2F",
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "required": false,
+            "in": "query",
+            "description": "Name recorded in the audit trail. Defaults to \"console\".",
+            "schema": {
+              "maxLength": 80,
+              "example": "Amina W.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/cases/{ref}/ack": {
+      "post": {
+        "operationId": "ApiController_ack",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "Case reference (case-insensitive).",
+            "schema": {
+              "example": "SS-4K2F",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/cases/{ref}/resolve": {
+      "post": {
+        "operationId": "ApiController_resolve",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "Case reference (case-insensitive).",
+            "schema": {
+              "example": "SS-4K2F",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    },
+    "/api/cases/{ref}/reveal-contact": {
+      "post": {
+        "operationId": "ApiController_reveal",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "Case reference (case-insensitive).",
+            "schema": {
+              "example": "SS-4K2F",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "console"
+        ],
+        "security": [
+          {
+            "dashboard-token": []
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Sauti Salama API",
+    "description": "Responder console API (`/api`, header `x-dashboard-token`) and the Africa's Talking callbacks (`/webhooks`, `?key=<WEBHOOK_SECRET>`).\n\nWebhook bodies are application/x-www-form-urlencoded, as Africa's Talking sends them.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "dashboard-token": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-dashboard-token"
+      }
+    },
+    "schemas": {
+      "VoiceCallbackDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "string",
+            "example": "1"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "callerNumber": {
+            "type": "string"
+          },
+          "destinationNumber": {
+            "type": "string"
+          },
+          "dtmfDigits": {
+            "type": "string"
+          },
+          "recordingUrl": {
+            "type": "string"
+          },
+          "durationInSeconds": {
+            "type": "string"
+          },
+          "callSessionState": {
+            "type": "string"
+          },
+          "hangupCause": {
+            "type": "string"
+          },
+          "mockTranscript": {
+            "type": "string",
+            "description": "Simulator only (ignored in production): the text to use instead of transcribing"
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
+      },
+      "UssdCallbackDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "+254712345678"
+          },
+          "serviceCode": {
+            "type": "string",
+            "example": "*384*7262#"
+          },
+          "text": {
+            "type": "string",
+            "example": "2*1*2",
+            "description": "Everything the user entered this session, joined by *"
+          },
+          "networkCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "phoneNumber"
+        ]
+      },
+      "SmsInboundDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "+254712345678"
+          },
+          "to": {
+            "type": "string",
+            "example": "7262"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text (long messages arrive concatenated)"
+          },
+          "date": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "linkId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "text"
+        ]
+      },
+      "SmsDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "networkCode": {
+            "type": "string"
+          },
+          "retryCount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ActorDto": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "string",
+            "example": "Amina W.",
+            "maxLength": 80,
+            "description": "Name recorded in the audit trail. Defaults to \"console\"."
+          }
+        }
+      },
+      "ResolveDto": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "string",
+            "example": "Amina W.",
+            "maxLength": 80,
+            "description": "Name recorded in the audit trail. Defaults to \"console\"."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "RESOLVED",
+              "FALSE_ALARM"
+            ],
+            "default": "RESOLVED"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    }
+  }
+}

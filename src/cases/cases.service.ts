@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { TranscriptionService } from '../ai/transcription.service';
 import { TriageService } from '../ai/triage.service';
 import { Lang, TriageHints, TriageResult, URGENCY_RANK, Urgency } from '../ai/triage.types';
@@ -10,9 +10,10 @@ import { RateLimiter } from '../common/rate-limiter';
 import { genRef } from '../common/ref';
 import { SmsService } from '../common/sms.service';
 import { Case } from '../entities/case.entity';
+import { Responder } from '../entities/responder.entity';
 import { SMS, STATUS_TEXT } from '../i18n/messages';
 import { CaseEventsService } from './case-events.service';
-import { NotifyService } from './notify.service';
+import { escalationDeadline, NotifyService } from './notify.service';
 import { ReferralService } from './referral.service';
 
 export interface CreateCaseInput {
@@ -33,13 +34,13 @@ export interface CaseView {
   id: string; ref: string; channel: string; language: string; phoneMasked: string;
   safeToContact: boolean; consentSharePolice: boolean; ward: string; triage: TriageResult;
   pathway: Case['pathway']; urgency: string; status: string; acknowledgedBy: string; acknowledgedAt: Date;
-  callbackWindow: string; createdAt: Date; updatedAt: Date;
+  escalateAt: Date; callbackWindow: string; createdAt: Date; updatedAt: Date;
 }
 
-const CLOSED = ['RESOLVED', 'FALSE_ALARM'];
+export const CLOSED = ['RESOLVED', 'FALSE_ALARM'];
 
 @Injectable()
-export class CasesService {
+export class CasesService implements OnModuleInit {
   private readonly logger = new Logger(CasesService.name);
   erasedCount = 0;
   /** New cases per phone per hour. Beyond this, reports are attached to that phone's latest case instead of opening new ones. */
@@ -55,6 +56,22 @@ export class CasesService {
     private readonly events: CaseEventsService,
     private readonly sms: SmsService,
   ) {}
+
+  /**
+   * Fail fast on the wrong ENCRYPTION_KEY: if none of the most recent encrypted fields can be read, every
+   * decrypt would fail later, mid-request, and new reports would be written under a key the old ones do not share.
+   */
+  async onModuleInit() {
+    const recent = await this.cases.find({ where: [{ phoneEnc: Not(IsNull()) }, { narrativeEnc: Not(IsNull()) }], order: { createdAt: 'DESC' }, take: 5 });
+    const samples = recent.map((c) => c.phoneEnc || c.narrativeEnc);
+    if (!samples.length) return;
+    const readable = samples.filter((s) => { try { this.crypto.decrypt(s); return true; } catch { return false; } }).length;
+    if (readable === 0) {
+      throw new Error('ENCRYPTION_KEY does not match the data already in the database: none of the latest encrypted fields can be decrypted. '
+        + 'Set the key that wrote this data, or start from an empty database (locally: delete data/sauti-salama.sqlite).');
+    }
+    if (readable < samples.length) this.logger.error(`${samples.length - readable} of the ${samples.length} latest encrypted fields cannot be decrypted`);
+  }
 
   // ---------------------------------------------------------------- creation
 
@@ -94,51 +111,57 @@ export class CasesService {
   async createPending(input: { channel: string; language: Lang; phone?: string; hints?: TriageHints }): Promise<Case> {
     const existing = await this.overReportLimit(input.phone);
     if (existing) return existing; // processRecording() attaches the recording to it as a follow-up
-    const c = this.cases.create({ ref: await this.newRef(), channel: input.channel, language: input.language, status: 'PROCESSING', urgency: 'medium' });
+    // escalateAt is set now so that a crash before the recording is processed still reaches Tier 2.
+    const c = this.cases.create({ ref: await this.newRef(), channel: input.channel, language: input.language, status: 'PROCESSING', urgency: 'medium', escalateAt: escalationDeadline() });
     this.attachPhone(c, input.phone);
     await this.cases.save(c);
     await this.events.add(c.id, 'CREATED', input.channel, 'Call in progress; recording pending');
     return c;
   }
 
-  async processRecording(id: string, recordingUrl: string, mockTranscript?: string): Promise<void> {
+  /**
+   * One turn of a live call. Each turn appends what was said to the case and refreshes the brief; the first turn
+   * alerts responders, because a caller must never have to finish the call before help is on its way. Later turns
+   * only re-alert when the urgency has risen.
+   */
+  async applyCallTurn(id: string, opts: { turn: string; triage: TriageResult; header?: string; channel?: string }): Promise<Case | null> {
     const c = await this.cases.findOne({ where: { id } });
-    if (!c) return;
-    if (c.status !== 'PROCESSING') {
-      // Over the per-phone limit: the call was attached to an existing case.
-      try {
-        const { text } = await this.transcription.transcribe(recordingUrl, { language: c.language as Lang, mockTranscript });
-        await this.addFollowUp(c, { channel: c.channel, language: c.language as Lang, narrative: text });
-      } catch (e) {
-        await this.events.add(c.id, 'TRIAGE_FAILED', 'system', `Follow-up recording could not be processed: ${String(e).slice(0, 200)}`);
-      }
-      return;
+    if (!c) return null;
+    const first = c.status === 'PROCESSING';
+    const previousUrgency = (c.urgency || 'low') as Urgency;
+    if (opts.channel) c.channel = opts.channel;
+    if (opts.turn) {
+      let previous = c.narrativeEnc ? this.crypto.tryDecrypt(c.narrativeEnc, `narrative of ${c.ref}`) : '';
+      if (previous === null) previous = '[Earlier text could not be decrypted]';
+      const addition = [opts.header, opts.turn].filter(Boolean).join('\n');
+      c.narrativeEnc = this.crypto.encrypt(`${previous ? `${previous}\n\n` : ''}${addition}`.slice(-8000));
     }
-    try {
-      const { text, provider } = await this.transcription.transcribe(recordingUrl, { language: c.language as Lang, mockTranscript });
-      c.narrativeEnc = this.crypto.encrypt(text);
-      if (recordingUrl) c.recordingUrlEnc = this.crypto.encrypt(recordingUrl);
-      await this.events.add(c.id, 'TRANSCRIBED', provider, `${text.length} characters`);
-      const triage = await this.triage.triage({ text, language: c.language as Lang, channel: c.channel, hints: { ward: c.ward || undefined } });
-      if (!c.ward && triage.location_mentions?.length) c.ward = triage.location_mentions[0];
-      this.applyTriage(c, triage);
-      c.status = 'OPEN';
-      await this.cases.save(c);
-      await this.events.add(c.id, 'TRIAGED', triage.provider, `Urgency ${c.urgency}. ${triage.summary_en}`);
-    } catch (e) {
-      this.logger.error(`processRecording failed for ${c.ref}: ${e}`);
-      c.status = 'OPEN';
-      await this.cases.save(c);
-      await this.events.add(c.id, 'TRIAGE_FAILED', 'system', String(e).slice(0, 300));
+    if (!c.ward && opts.triage.location_mentions?.length) c.ward = opts.triage.location_mentions[0];
+    this.applyTriage(c, opts.triage);
+    if (first) c.status = 'OPEN';
+    else if (CLOSED.includes(c.status)) c.status = 'OPEN';
+    await this.cases.save(c);
+
+    const raised = URGENCY_RANK[c.urgency as Urgency] > URGENCY_RANK[previousUrgency];
+    if (first) {
+      await this.events.add(c.id, 'TRIAGED', opts.triage.provider, `Urgency ${c.urgency}. ${opts.triage.summary_en}`);
+      this.dispatch(c);
+    } else {
+      await this.events.add(c.id, 'CALL_UPDATED', opts.triage.provider, `Urgency ${c.urgency}${raised ? ` (raised from ${previousUrgency})` : ''}. ${opts.triage.summary_en}`);
+      if (raised) this.dispatch(c);
     }
-    this.dispatch(c);
+    return c;
   }
 
   // ---------------------------------------------------------------- updates
 
-  async setConsent(ref: string, safeToContact: boolean): Promise<Case | null> {
+  /**
+   * Contact consent. By SMS a phoneHash is passed and must match the reporting phone: otherwise anyone who
+   * learned a reference could switch on texts to a phone the survivor said is watched.
+   */
+  async setConsent(ref: string, safeToContact: boolean, phoneHash?: string): Promise<Case | null> {
     const c = await this.cases.findOne({ where: { ref } });
-    if (!c) return null;
+    if (!c || (phoneHash !== undefined && c.phoneHash !== phoneHash)) return null;
     c.safeToContact = safeToContact;
     if (c.triage) c.pathway = this.referral.build(c.triage, { ward: c.ward, safeToContact, consentSharePolice: c.consentSharePolice, channel: c.channel });
     await this.cases.save(c);
@@ -147,18 +170,32 @@ export class CasesService {
     return c;
   }
 
-  async acknowledge(ref: string, actor: string): Promise<Case | null> {
+  /** Police involvement is the survivor's choice. Same phone rule as setConsent(). */
+  async setPoliceConsent(ref: string, consent: boolean, phoneHash?: string): Promise<Case | null> {
+    const c = await this.cases.findOne({ where: { ref } });
+    if (!c || (phoneHash !== undefined && c.phoneHash !== phoneHash)) return null;
+    c.consentSharePolice = consent;
+    if (c.triage) c.pathway = this.referral.build(c.triage, { ward: c.ward, safeToContact: c.safeToContact, consentSharePolice: consent, channel: c.channel });
+    await this.cases.save(c);
+    await this.events.add(c.id, 'CONSENT_POLICE', 'survivor', consent ? 'Survivor asked for help reporting to the police' : 'Survivor does not want police involvement');
+    return c;
+  }
+
+  async acknowledge(ref: string, actor: string, responder?: Responder): Promise<Case | null> {
     const c = await this.cases.findOne({ where: { ref } });
     if (!c) return null;
-    if (['RESOLVED', 'FALSE_ALARM'].includes(c.status)) return c;
+    if (CLOSED.includes(c.status)) return c;
     c.status = 'ACKNOWLEDGED';
     c.acknowledgedBy = actor;
+    if (responder) c.acknowledgedByResponder = responder;
     c.acknowledgedAt = c.acknowledgedAt || new Date();
+    c.escalateAt = null;
     await this.cases.save(c);
-    this.notify.cancelEscalation(ref);
     await this.events.add(c.id, 'ACKNOWLEDGED', actor, 'Responder accepted the case');
     if (c.safeToContact && c.phoneEnc) {
-      await this.sms.send(this.crypto.decrypt(c.phoneEnc), SMS.acknowledged(c.language as Lang, c.ref, actor), 'survivor');
+      const phone = this.crypto.tryDecrypt(c.phoneEnc, `phone of ${c.ref}`);
+      if (phone) await this.sms.send(phone, SMS.acknowledged(c.language as Lang, c.ref, actor), 'survivor');
+      else await this.events.add(c.id, 'SURVIVOR_SMS_FAILED', 'system', 'Acceptance SMS not sent: the stored phone number could not be decrypted');
     }
     return c;
   }
@@ -167,20 +204,18 @@ export class CasesService {
     const c = await this.cases.findOne({ where: { ref } });
     if (!c) return null;
     c.status = outcome;
+    c.escalateAt = null;
     await this.cases.save(c);
-    this.notify.cancelEscalation(ref);
     await this.events.add(c.id, outcome, actor, note || '');
     return c;
   }
 
-  /** Right to erasure (Kenya DPA 2019 s.40): hard-delete the case and its audit trail. */
+  /** Right to erasure (Kenya DPA 2019 s.40): hard-delete the case and its audit trail, together or not at all. */
   async erase(ref: string, opts: { actor: string; phoneHash?: string }): Promise<boolean> {
     const c = await this.cases.findOne({ where: { ref } });
     if (!c) return false;
     if (opts.phoneHash && c.phoneHash !== opts.phoneHash) return false; // only the reporting phone can erase via USSD/SMS
-    this.notify.cancelEscalation(ref);
-    await this.events.deleteForCase(c.id);
-    await this.cases.delete({ id: c.id });
+    await deleteCase(this.cases, c.id);
     this.erasedCount++;
     this.logger.log(`Case ${ref} erased by ${opts.actor}`);
     return true;
@@ -200,18 +235,26 @@ export class CasesService {
     const c = await this.cases.findOne({ where: { ref } });
     if (!c) return null;
     await this.events.add(c.id, 'ACCESSED', actor, 'Narrative viewed in console');
+    const narrative = c.narrativeEnc ? this.crypto.tryDecrypt(c.narrativeEnc, `narrative of ${c.ref}`) : null;
+    const narrativeUnreadable = !!c.narrativeEnc && narrative === null;
+    if (narrativeUnreadable) await this.events.add(c.id, 'DECRYPT_FAILED', 'system', 'Narrative could not be decrypted');
     const events = await this.events.list(c.id);
-    return { ...this.view(c), narrative: c.narrativeEnc ? this.crypto.decrypt(c.narrativeEnc) : null, hasRecording: !!c.recordingUrlEnc, events };
+    return { ...this.view(c), narrative, narrativeUnreadable, hasRecording: !!c.recordingUrlEnc, events };
   }
 
   /** Reveal the survivor's phone only with consent; logged. */
-  async revealContact(ref: string, actor: string): Promise<{ phone: string } | { error: string }> {
+  async revealContact(ref: string, actor: string): Promise<{ phone: string } | { error: string } | null> {
     const c = await this.cases.findOne({ where: { ref } });
-    if (!c) return { error: 'not found' };
+    if (!c) return null;
     if (!c.safeToContact) return { error: 'The survivor said this phone is not safe to contact.' };
     if (!c.phoneEnc) return { error: 'No phone number on this case.' };
+    const phone = this.crypto.tryDecrypt(c.phoneEnc, `phone of ${c.ref}`);
+    if (!phone) {
+      await this.events.add(c.id, 'DECRYPT_FAILED', 'system', 'Phone number could not be decrypted');
+      return { error: 'The stored phone number could not be decrypted.' };
+    }
     await this.events.add(c.id, 'CONTACT_REVEALED', actor, 'Phone number revealed to responder');
-    return { phone: this.crypto.decrypt(c.phoneEnc) };
+    return { phone };
   }
 
   /** Survivor-facing status; only the reporting phone can query it. */
@@ -236,7 +279,7 @@ export class CasesService {
       id: c.id, ref: c.ref, channel: c.channel, language: c.language, phoneMasked: c.phoneMasked,
       safeToContact: c.safeToContact, consentSharePolice: c.consentSharePolice, ward: c.ward, triage: c.triage,
       pathway: c.pathway, urgency: c.urgency, status: c.status, acknowledgedBy: c.acknowledgedBy, acknowledgedAt: c.acknowledgedAt,
-      callbackWindow: c.callbackWindow, createdAt: c.createdAt, updatedAt: c.updatedAt,
+      escalateAt: c.escalateAt, callbackWindow: c.callbackWindow, createdAt: c.createdAt, updatedAt: c.updatedAt,
     };
   }
 
@@ -257,7 +300,8 @@ export class CasesService {
     const tInput = { text: input.narrative, language: input.language, channel: input.channel, hints: { ...(input.hints || {}), ward: input.ward || c.ward || undefined } };
     const quick = input.silent ? this.triage.silent(tInput) : input.narrative ? this.triage.rulesOnly(tInput) : this.triage.structured(tInput);
     if (input.narrative) {
-      const previous = c.narrativeEnc ? this.crypto.decrypt(c.narrativeEnc) : '';
+      let previous = c.narrativeEnc ? this.crypto.tryDecrypt(c.narrativeEnc, `narrative of ${c.ref}`) : '';
+      if (previous === null) previous = '[Earlier text could not be decrypted]';
       const note = `[Follow-up ${new Date().toISOString().slice(11, 16)} UTC via ${input.channel.replace('_', ' ')}] ${input.narrative}`;
       c.narrativeEnc = this.crypto.encrypt(`${previous ? `${previous}\n\n` : ''}${note}`.slice(-8000));
     }
@@ -310,4 +354,12 @@ export class CasesService {
     }
     throw new Error('Could not allocate a unique case reference');
   }
+}
+
+/**
+ * Deletes a case and its audit trail (erasure requests and retention). case_events.caseId cascades on delete, so
+ * both go in one statement: there is never a moment with the case gone and its trail left, or the reverse.
+ */
+export async function deleteCase(cases: Repository<Case>, id: string): Promise<void> {
+  await cases.delete({ id });
 }

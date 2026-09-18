@@ -1,38 +1,23 @@
-# Kiswahili voice prompts to record
+# Kiswahili on the call line
 
-The call line reads Kiswahili prompts with text-to-speech, which sounds foreign to callers. Recording them in a calm, warm Kenyan voice makes the line more trustworthy and easier to follow, especially for callers with low literacy.
+**Status: the pre-recorded prompt set is on hold.** The call line no longer plays a fixed menu. It asks its own
+questions, chosen per call, so most of what a caller hears cannot be recorded in advance. Africa's Talking
+text-to-speech reads both languages today, and its Kiswahili has an English accent.
 
-## How to record
+## What that means
 
-* Quiet room, phone about 20 cm away, normal pace, a short pause at every full stop.
-* Read the text exactly as written. Numbers such as "1 1 9 5" are read digit by digit.
-* Save each prompt as an MP3 with the file name in the first column (any recorder app; convert with Audacity if needed).
-* Do not record the case reference (for example "S S dash 4 K 2 F"). It is read out automatically between part 1 and part 2.
+* The reviewed lines the line can still say are in `src/i18n/call.ts`: the greeting, the two consent questions,
+  the facts (emergency numbers, the 72-hour window, Childline, the helpline), the closings and the fallback
+  questions used when no AI key is set.
+* Those could be recorded and played with `<Play>`, but the generated questions between them would still be
+  text-to-speech, so a call would switch voices mid-conversation. That is worse for trust than one voice throughout.
 
-## Switching them on
+## The plan instead
 
-1. Put the files in `public/audio/sw/`.
-2. Set `SW_AUDIO_BASE_URL=/audio/sw` in `.env`. The server plays them from its own public address.
-3. Call the line and choose Kiswahili. English prompts keep using text-to-speech.
+Neural Kiswahili text-to-speech, so every line - reviewed or generated - is spoken in one natural Kenyan voice.
+It is part of the real-time voice work in [REALTIME_VOICE.md](REALTIME_VOICE.md), which also removes the pauses
+between turns.
 
-The welcome ("For English, press 1. Kwa Kiswahili, bonyeza 2.") is bilingual and stays text-to-speech.
-
-## Prompts
-
-| File | When it plays | Text to read |
-|---|---|---|
-| `main.mp3` | Main menu | Bonyeza 1 kutuambia kilichotokea. Bonyeza 2 kusikia maelezo ya msaada wa dharura. Bonyeza 3 kuzungumza na mshauri. Ikiwa huwezi kuongea kwa usalama, bonyeza 9 sasa na tutamjulisha mhudumu kimya kimya. |
-| `record.mp3` | Before the beep | Chukua muda wako. Baada ya mlio, tuambie kilichotokea, uko wapi, na kama uko salama sasa hivi. Bonyeza alama ya reli ukimaliza. |
-| `afterRecord_1.mp3` | After the recording, part 1 (the reference is read out after it) | Asante. Nambari yako ya rejeleo ni |
-| `afterRecord_2.mp3` | After the recording, part 2 (the safety question) | Mhudumu wa kuaminika katika eneo lako anaarifiwa. Ni salama kwetu kupiga simu au kutuma SMS kwa simu hii? Bonyeza 1 kwa ndiyo, au 2 kwa hapana. |
-| `consentYes.mp3` | Caller pressed 1: safe to contact | Asante. Mhudumu wako atawasiliana nawe kwa nambari hii. Ikiwa haitakuwa salama tena, piga simu hii tena na ubonyeze 9. Msaada wa bure wakati wowote: 1 1 9 5. Uwe salama. |
-| `consentNo.mp3` | Caller pressed 2: not safe | Sawa. Hakuna atakayepiga au kutuma SMS kwa simu hii. Mhudumu wako atatumia nambari yako ya rejeleo, na unaweza kupiga simu hii tena wakati wowote kuangalia maendeleo. Unaweza kufuta simu hii kwenye orodha ya simu zako. Msaada wa bure wakati wowote: 1 1 9 5. |
-| `info.mp3` | Urgent help information | Ikiwa kumetokea dhuluma ya kingono, nenda kituo chochote cha afya ndani ya saa 72 kwa dawa ya bure ya kuzuia HIV na mimba, na uombe fomu ya PRC. Ikiwa uko hatarini sasa, piga 9 9 9 au 1 1 2. Ushauri wa bure wakati wowote: 1 1 9 5. Kwa mtoto, piga Childline 1 1 6. |
-| `infoMenu.mp3` | After the information | Bonyeza 1 kusikia tena, 2 kuacha ripoti, au kata simu. |
-| `transfer.mp3` | Connecting to a counsellor | Tunakuunganisha na mshauri sasa. Tafadhali subiri. |
-| `callback_1.mp3` | Counsellors busy, part 1 (the reference is read out after it) | Washauri wote wako na simu nyingine sasa. Tumeandikisha ombi lako, nambari |
-| `callback_2.mp3` | Counsellors busy, part 2 (the safety question) | na mhudumu wa kuaminika atakupigia. Ni salama kupiga simu hii? Bonyeza 1 kwa ndiyo, 2 kwa hapana. |
-| `invalid.mp3` | Invalid key | Samahani, hicho si chaguo sahihi. |
-| `goodbye.mp3` | Goodbye | Msaada wa bure wakati wowote: 1 1 9 5. Kwaheri, uwe salama. |
-
-Source of truth: `src/i18n/messages.ts`. If a prompt changes there, record that file again.
+If you want to test a recorded voice before then, record the reviewed lines from `src/i18n/call.ts`, keep the
+wording exactly as written, and raise it with the maintainer: wiring `<Play>` back in is a small change, but which
+lines are recorded has to match what the line actually says.

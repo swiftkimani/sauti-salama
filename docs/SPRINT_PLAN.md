@@ -24,7 +24,7 @@ Deadline: submission form by **Sunday 21 Sep 2026**. Target: everything submitte
 
 ## Sat 19 - Sun 20 Sep - buffer
 - [ ] Ask two people to run the quick start from the README on their machines; fix what breaks.
-- [ ] Pre-record 6 Kiswahili prompts (main, record, info, consentYes, consentNo, goodbye) as mp3 and set `SW_AUDIO_BASE_URL` - big accessibility win if time allows.
+- [ ] Better Kiswahili speech on the call line: the questions are now generated, so pre-recorded prompts no longer fit. Neural Kiswahili text-to-speech is part of the real-time voice plan (docs/REALTIME_VOICE.md).
 - [ ] Re-submit if anything changed.
 
 ## Submission checklist (5 required items)

@@ -71,13 +71,15 @@ async function main() {
   if (/^https:\/\//.test(publicBase)) {
     console.log('\nPublic URL');
     try {
-      const r = await request(`${publicBase}/api/health`);
+      const r = await request(`${publicBase}/api/status`, { headers: { 'x-dashboard-token': env.DASHBOARD_TOKEN || 'demo-token' } });
+      if (r.status === 401) throw new Error('the server refused DASHBOARD_TOKEN from .env; restart it so both use the same token');
       const h = await r.json();
       if (h.ok) ok(`Server reachable through the tunnel (SMS mode: ${h.sms}, AI: ${h.ai})`);
-      else fail(`Health check answered but not ok: ${JSON.stringify(h)}`);
+      else fail(`Status check answered but not ok: ${JSON.stringify(h)}`);
       if (h.sms === 'console') warn('The running server has no AT_API_KEY yet. Save it in .env (npm run live restarts the server automatically).');
+      for (const w of h.warnings || []) warn(w);
     } catch (e) {
-      fail(`${publicBase}/api/health is not reachable (${e.message}). Is the server running and the tunnel open?`);
+      fail(`${publicBase}/api/status did not answer (${e.message}). Is the server running and the tunnel open?`);
     }
     try {
       const form = new URLSearchParams({ sessionId: 'at-check', serviceCode: '*384#', phoneNumber: '+254700000001', text: '' });

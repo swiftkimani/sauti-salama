@@ -1,0 +1,19 @@
+# Secrets and local data must never reach an image layer or the build context.
+.env
+.env.*
+!.env.example
+data/
+*.sqlite
+
+node_modules/
+dist/
+coverage/
+.git/
+.github/
+.idea/
+.vscode/
+.DS_Store
+*.log
+docs/
+test/
+scripts/

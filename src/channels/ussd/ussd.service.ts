@@ -6,6 +6,7 @@ import { normalizePhone } from '../../common/phone';
 import { normalizeRef } from '../../common/ref';
 import { ResourcesService } from '../../resources/resources.service';
 import { USSD, t } from '../../i18n/messages';
+import { UssdCallbackDto } from '../webhook.dto';
 
 const VT = ['physical', 'sexual', 'emotional', 'economic', 'harassment', 'other'];
 const WHEN: Array<'recent' | 'week' | 'older'> = ['recent', 'week', 'older'];
@@ -21,7 +22,7 @@ export class UssdService {
 
   constructor(private readonly cases: CasesService, private readonly crypto: CryptoService, private readonly resources: ResourcesService) {}
 
-  async handle(body: Record<string, string>): Promise<string> {
+  async handle(body: UssdCallbackDto): Promise<string> {
     const phone = body.phoneNumber || '';
     const parts = String(body.text || '').split('*').filter((p) => p !== '');
     if (parts.length === 0) return USSD.langMenu;
@@ -51,11 +52,13 @@ export class UssdService {
     if (a.length === 2) return t(lang, USSD.present);
     if (a.length === 3) return t(lang, USSD.area);
     if (a.length === 4) return t(lang, USSD.safe);
-    const [type, when, present, area, safe] = a;
+    if (a.length === 5) return t(lang, USSD.police);
+    const [type, when, present, area, safe, police] = a;
     const c = await this.cases.createCase({
       channel: 'ussd', language: lang, phone, ward: area.slice(0, 40),
       hints: { violence_type: VT[Number(type) - 1] || 'other', when: WHEN[Number(when) - 1] || 'older', perpetrator_present: present === '1' },
       safeToContact: safe === '1',
+      consentSharePolice: police === '1',
     });
     return USSD.created(lang, c.ref, this.cases.survivorSteps(c, lang, 1));
   }

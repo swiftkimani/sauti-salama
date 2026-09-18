@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { maskPhone } from './phone';
 
 export interface OutboxMessage {
   id: string;
@@ -16,10 +17,13 @@ export interface OutboxMessage {
   providerResponse?: unknown;
 }
 
+/** What the console may see of an outbox entry: masked number, no raw provider response (it repeats the number). */
+export type OutboxView = Omit<OutboxMessage, 'providerResponse'>;
+
 /**
- * Outbound SMS through Africa's Talking. Without AT credentials every message is
- * logged to the console and kept in an in-memory outbox that the simulator page
- * displays, so the whole flow can be demonstrated offline.
+ * Outbound SMS through Africa's Talking. Without AT credentials nothing leaves the machine: messages are kept in
+ * an in-memory outbox that the simulator page displays, so the whole flow can be demonstrated offline.
+ * Logs never carry a full phone number or a message body.
  */
 @Injectable()
 export class SmsService {
@@ -38,7 +42,7 @@ export class SmsService {
 
     if (this.mode === 'console') {
       entry.status = 'logged';
-      this.logger.log(`[SMS -> ${to}] ${message.replace(/\n/g, ' | ')}`);
+      this.logger.log(`[SMS ${kind} -> ${maskPhone(to)}] ${message.length} chars, not sent (no AT_API_KEY; text in the simulator outbox)`);
       return entry;
     }
     const username = process.env.AT_USERNAME || 'sandbox';
@@ -50,6 +54,7 @@ export class SmsService {
         method: 'POST',
         headers: { apiKey: process.env.AT_API_KEY, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
+        signal: AbortSignal.timeout(Number(process.env.SMS_TIMEOUT_MS || 15000)),
       });
       const data: any = await res.json().catch(async () => ({ raw: await res.text().catch(() => '') }));
       entry.providerResponse = data;
@@ -62,23 +67,27 @@ export class SmsService {
       } else {
         entry.status = 'failed';
         entry.failureReason = r?.status || data?.SMSMessageData?.Message || `HTTP ${res.status}`;
-        this.logger.error(`SMS to ${to} not accepted by Africa's Talking: ${entry.failureReason}`);
+        this.logger.error(`SMS to ${maskPhone(to)} not accepted by Africa's Talking: ${entry.failureReason}`);
       }
     } catch (e) {
       entry.status = 'failed';
       entry.failureReason = String((e as Error)?.message || e);
-      this.logger.error(`SMS send failed: ${entry.failureReason}`);
+      this.logger.error(`SMS to ${maskPhone(to)} failed: ${entry.failureReason}`);
     }
     return entry;
   }
 
   /** Delivery report from Africa's Talking: POST { id, status, phoneNumber, failureReason, ... }. */
-  markDelivery(report: Record<string, string>): boolean {
+  markDelivery(report: { id?: string; status?: string; failureReason?: string }): boolean {
     const entry = this.outbox.find((m) => m.messageId && m.messageId === report.id);
     if (!entry) return false;
     entry.status = String(report.status || entry.status).toLowerCase();
     if (report.failureReason) entry.failureReason = report.failureReason;
-    if (entry.status !== 'success') this.logger.warn(`SMS ${report.id} to ${entry.to}: ${report.status}${report.failureReason ? ` (${report.failureReason})` : ''}`);
+    if (entry.status !== 'success') this.logger.warn(`SMS ${report.id} to ${maskPhone(entry.to)}: ${report.status}${report.failureReason ? ` (${report.failureReason})` : ''}`);
     return true;
+  }
+
+  view(limit = 100): OutboxView[] {
+    return this.outbox.slice(0, limit).map(({ providerResponse: _omit, ...m }) => ({ ...m, to: maskPhone(m.to) }));
   }
 }
