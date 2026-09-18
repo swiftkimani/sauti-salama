@@ -1,17 +1,68 @@
-# Demo video script (3:00)
+# Demo video
 
-Record with the simulator and the console side by side (OBS / Loom). Use a real feature phone in shot for the opening if you can. Keep the console token in the URL so it loads instantly.
+Two cuts, both built from the same screenshots of the running system (a throwaway server: in-memory database, fictional responders, `demo-token`). Nothing in them is a mock-up.
 
-Set `ESCALATION_MINUTES=0.5` for the recording so escalation can be shown in 30 seconds.
-
-| Time | On screen | Voice-over |
+| File | Length | Sound |
 |---|---|---|
-| 0:00-0:15 | You on camera, a feature phone in hand | "Hi, I'm Benard Kimani. KDHS 2022 says more than four in ten Kenyan women with a partner have been hit or forced by that partner. Most never report, and every reporting tool assumes a smartphone and a private moment. This is Sauti Salama: any phone, no internet, no app." |
-| 0:15-0:40 | Simulator, USSD phone. Dial `*384*7262#`, press 2 (Kiswahili), 2 ("Niko hatarini SASA"), type "Dandora". Outbox panel shows the CRITICAL alert appear. | "A survivor with the abuser in the next room dials the code. Two key presses and a word. Silent, free on most networks, nothing left on the phone. Within a second a vetted community responder in Dandora is paged." |
-| 0:40-1:15 | Simulator, IVR. Call, press 1 (English), 1 (record). Pick the Kibra sample, send. Show the reference read back and the consent question; press 2 ("not safe"). Then show the outbox alert. | "Someone who can't type calls the line, chooses a language and simply talks. The recording is transcribed and triaged in the background while the caller gets a reference number and one question: is it safe to call this phone? She says no - so nobody ever will." |
-| 1:15-1:45 | Console. Open the voice case. Point at: urgency badge, 72-hour flag, risk flags, the English and Kiswahili brief, the "Safety rules" note under the brief, the next-step checklist with the 72h deadline and GVRC number. | "Here is what the responder sees. AI turned the report into a brief in both languages: sexual violence, within 72 hours, known perpetrator. A rules layer underneath makes sure the AI can never lower a danger signal. And every survivor-facing word is a reviewed template - the model never writes to a survivor." |
-| 1:45-2:10 | Console. Point at "Do not call or text this phone" and the disabled "Reveal phone number" button. Simulator SMS panel: responder sends `ACK SS-XXXX`. Console status flips to "Accepted in N min". USSD: option 5, enter the reference -> "responder Amina W. has accepted your case". | "The phone is masked and can't be revealed without consent. The responder accepts by SMS. The survivor checks who is coming from the same free menu. If nobody accepts in ten minutes, the case escalates to the GBV Recovery Centre desk automatically." |
-| 2:10-2:35 | Simulator SMS: a Sheng report ("Manze msee wangu amenichapa..."). Outbox shows the alert with HIGH/CRITICAL. Then USSD option 6: erase -> "deleted". Console: case gone; queue footer "Erased on request: 1". | "Sheng, Kiswahili, English - all handled. And the survivor can delete everything from a free USSD session: a real hard delete, which is why there is no blockchain anywhere near this." |
-| 2:35-3:00 | Architecture slide, then you on camera | "NestJS, Africa's Talking, an open-weight model on Groq behind a rules floor, encrypted storage, Kenya DPA 2019 by design. It routes to a vetted neighbour first, an institution second, and the police only when the survivor chooses. That is power shifted to the community. The code runs today. Asante." |
+| [`demo/sauti-salama-demo-vo.mp4`](demo/sauti-salama-demo-vo.mp4) | 2:56 | Narrated in Kenyan English, captions burned in |
+| [`demo/sauti-salama-demo.mp4`](demo/sauti-salama-demo.mp4) | 2:11 | Silent, captions only |
 
-Checklist before recording: `GROQ_API_KEY` set and `npm run ai:check` passing (otherwise the brief comes from the rules engine only), fresh database (`rm data/*.sqlite`), `DEMO_RESPONDER_PHONE` set to your number if you show a real SMS arriving, browser zoom 110%, console filter set to "Open", notifications off.
+```bash
+npm run demo:video        # silent cut
+npm run demo:video:vo     # narrated cut (needs edge-tts, see below)
+```
+
+**`scripts/build-demo-video.js` is the source of truth.** Captions, spoken lines, shot order and minimum hold times are one array at the top of it. Change a line there and rebuild; this page describes the shape, not the exact words.
+
+## The voice
+
+* **en-KE-AsiliaNeural** — Kenyan English, female — narrates throughout.
+* **sw-KE-ZuriNeural** — Kenyan Kiswahili — speaks the one Kiswahili line, where the video says the call line greets in both languages. You hear what a caller hears: *"Uko salama hapa. Niambie kinachoendelea."*
+
+Both come from Microsoft Edge's text-to-speech, which needs no account. Install once:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install edge-tts
+EDGE_TTS=.venv/bin/edge-tts npm run demo:video:vo
+```
+
+Useful switches: `DEMO_VOICE_EN=en-KE-ChilembaNeural` (Kenyan male), `DEMO_VOICE_RATE=+18%` (brisker), `DEMO_VOICE_SW=sw-KE-RafikiNeural`.
+
+The narration text is sent to Microsoft's speech service to be synthesised. It is project copy; no survivor data goes anywhere near it.
+
+### Using your own voice
+
+Every line is cached as its own file in `demo/audio/` (`title.mp3`, `alerted.mp3`, `privacy.mp3`, …). Record a line yourself, save it over the file of the same name, and the builder leaves it alone and re-synthesises only the rest. A real Kenyan voice — yours — will carry a line about trust better than any model, and you can start with just the opening and closing.
+
+The picture is cut to the speech: each line is spoken first, measured, and its shot held exactly that long plus a short breath. So a longer or shorter recording never falls out of sync; it just changes that shot's length.
+
+## Shot list
+
+| # | On screen | Beat |
+|---|---|---|
+| 1 | Title card | The scale of it, and why existing tools miss: they assume a smartphone and a private moment |
+| 2–3 | Call line, idle then greeting | A line, not an app. No menu, no key presses. Greets in English and Kiswahili |
+| 4 | Caller's words typed | The simulator stands in for a phone, so the flow runs with no phone bill |
+| 5 | Responder alert in the outbox | **The moment:** one sentence in, a vetted responder is alerted — critical, Kayole, abuser present, weapon |
+| 6–8 | Question, reference, consent, closing | One question at a time; consent spoken, not keyed; the closing is reviewed text only |
+| 9 | USSD danger alert | For a survivor who cannot speak: two key presses, silent, nothing in the call log |
+| 10–12 | SMS report, reply, responder ACK | Sheng and Kiswahili welcome; one neutral reply; only registered responders can accept |
+| 13–17 | Console: queue, brief, pathway, police, accepted | What a responder sees, the rules floor under the AI, deadlines that matter, police only on request |
+| 18 | Do-not-contact case | The number cannot be revealed at all; every reveal is in the audit log |
+| 19–20 | Erasure | Hers to ask for, and a real hard delete — audit trail included |
+| 21 | End card | The stack, the safeguards, and who the line routes to first |
+
+## Re-recording the screens
+
+Start a throwaway server so nothing real is on camera, then walk the simulator and the console:
+
+```bash
+npm run build
+PORT=3200 SQLITE_PATH=:memory: DASHBOARD_TOKEN=demo-token DEMO_RESPONDER_PHONE=+254700000111 \
+  TIER2_RESPONDER_PHONE=+254700000222 ESCALATION_MINUTES=1 node dist/main.js
+# simulator: http://localhost:3200/simulator.html      console: http://localhost:3200/dashboard.html?token=demo-token
+```
+
+Replace the images in `demo/frames/` (keep the file names) and rebuild. With `GROQ_API_KEY` set, the call line asks its own questions and the brief comes from the model; without it you get the reviewed fallback questions and the rules engine, which is what the current cut shows.
+
+Build scrap (scene PNGs, audio segments) goes to a temp directory, so only the two videos, `frames/` and `audio/` live in the repository.
