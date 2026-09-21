@@ -14,8 +14,4 @@ export class CaseEventsService {
   list(caseId: string): Promise<CaseEvent[]> {
     return this.repo.find({ where: { caseId }, order: { createdAt: 'ASC' } });
   }
-
-  async deleteForCase(caseId: string): Promise<void> {
-    await this.repo.delete({ caseId });
-  }
 }

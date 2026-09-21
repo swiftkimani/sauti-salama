@@ -1,9 +1,12 @@
+# Production-shaped local stack. The image runs with NODE_ENV=production, so .env must hold real values for
+# ENCRYPTION_KEY, HASH_PEPPER, DASHBOARD_TOKEN, WEBHOOK_SECRET and an https PUBLIC_BASE_URL, or the app refuses to
+# start (see docs/RUNBOOK.md). Migrations run on start.
 services:
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: sauti
-      POSTGRES_PASSWORD: sauti
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sauti}
       POSTGRES_DB: sauti
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -16,11 +19,12 @@ services:
     env_file: .env
     environment:
       DB_TYPE: postgres
-      DATABASE_URL: postgres://sauti:sauti@db:5432/sauti
+      DATABASE_URL: postgres://sauti:${POSTGRES_PASSWORD:-sauti}@db:5432/sauti
     ports:
       - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
 volumes:
   pgdata:

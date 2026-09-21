@@ -79,7 +79,7 @@
   <div class="mark"><svg width="60" height="60" viewBox="0 0 32 32"><path d="M9.5 9h13A2.5 2.5 0 0 1 25 11.5v7a2.5 2.5 0 0 1-2.5 2.5H16l-4.5 3.5V21h-2A2.5 2.5 0 0 1 7 18.5v-7A2.5 2.5 0 0 1 9.5 9z" fill="#5B2A86"/><path d="M12 15h.01M14.5 13v4M17 12v6M19.5 14v2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
   <div class="kicker">Safety, Reporting &amp; Protection</div>
   <h1>Sauti Salama</h1>
-  <p class="lead">A GBV reporting and referral line for Kenya that works on any phone.<br>No internet. No app. Two key presses to reach a vetted neighbour.</p>
+  <p class="lead">A GBV reporting and referral line for Kenya that works on any phone.<br>No internet. No app. Three key presses to reach a vetted neighbour.</p>
   <div class="foot"><span><b>Benard Kimani</b> · Nairobi</span><span>OSF x Andela Hackathon 2026</span></div>
 </section>
 
@@ -112,9 +112,9 @@
 <!-- 4 -->
 <section class="slide">
   <div class="kicker">The idea</div>
-  <p class="big-quote">Any phone. No internet. No app.<br><em>Two key presses</em> to reach a vetted neighbour.</p>
+  <p class="big-quote">Any phone. No internet. No app.<br><em>Three key presses</em> to reach a vetted neighbour.</p>
   <div class="grid g3" style="margin-top:46px">
-    <div class="card"><span class="pill">Call line</span><h3 style="margin-top:14px">Speak</h3><p>For low literacy and visual impairment. English or Kiswahili. Press 9 for a silent alert.</p></div>
+    <div class="card"><span class="pill">Call line</span><h3 style="margin-top:14px">Speak</h3><p>For low literacy and visual impairment. No menu: it listens and asks one question at a time, in her language.</p></div>
     <div class="card"><span class="pill">USSD *384*7262#</span><h3 style="margin-top:14px">Press</h3><p>For anyone who cannot speak. Silent, free, no data, nothing left in the call log or inbox.</p></div>
     <div class="card"><span class="pill">SMS 7262</span><h3 style="margin-top:14px">Text</h3><p>English, Kiswahili or Sheng. HELP for information, STOP to erase everything.</p></div>
   </div>
@@ -139,9 +139,8 @@
     <div class="arrow">→</div>
     <div style="display:grid;gap:14px;flex:1">
       <div class="sms">SAUTI SALAMA ALERT [CRITICAL] SS-S6X6
-SILENT ALERT: the caller is in danger now
-Area: Dandora | Via: ussd silent
-Survivor phone: NOT SAFE - do not call or text
+Area: Dandora | ussd silent | en
+Phone: DO NOT call or text
 Reply ACK SS-S6X6 to accept.</div>
       <div class="grid g3" style="margin-top:0;gap:14px">
         <div class="card" style="padding:16px 18px"><h3 style="font-size:19px">Seconds</h3><p style="font-size:16px">Vetted ward responder alerted by SMS</p></div>
@@ -156,14 +155,14 @@ Reply ACK SS-S6X6 to accept.</div>
 <!-- 6 -->
 <section class="slide">
   <div class="kicker">The call line</div>
-  <h2>Talk if you can. Press 9 if you can't.</h2>
+  <h2>No menu. It answers, listens, and asks one question at a time.</h2>
   <div class="steps">
-    <div class="step"><span class="n">1</span><div><b>Choose English or Kiswahili</b><span class="d">Natural recorded Kiswahili prompts replace robotic text-to-speech</span></div><span class="pill">Language</span></div>
-    <div class="step"><span class="n">2</span><div><b>Tell us what happened</b><span class="d">Up to 3 minutes; transcribed by Whisper large v3 in the background, the caller is never kept waiting</span></div><span class="pill">Record</span></div>
-    <div class="step"><span class="n">3</span><div><b>Hear your reference, answer one question</b><span class="d">"Is it safe to call or text this phone?" If not, nobody ever will</span></div><span class="pill green">Consent</span></div>
-    <div class="step"><span class="n">9</span><div><b>Silent alert, any time</b><span class="d">The call drops in a second, the log shows a short call, a responder is already paged</span></div><span class="pill red">Danger</span></div>
+    <div class="step"><span class="n">1</span><div><b>She speaks, in her own words</b><span class="d">English, Kiswahili or Sheng. Nothing to read, nothing to press, no options to remember</span></div><span class="pill">Speak</span></div>
+    <div class="step"><span class="n">2</span><div><b>A responder is alerted from her first sentence</b><span class="d">Not at the end of the call. She never has to finish talking before help is on its way</span></div><span class="pill red">Seconds</span></div>
+    <div class="step"><span class="n">3</span><div><b>Then only what changes what a responder does</b><span class="d">Are you safe now, where are you, who did it, injuries, children. At most five questions, then consent is asked out loud</span></div><span class="pill green">Consent</span></div>
+    <div class="step"><span class="n">4</span><div><b>Saying nothing is treated as danger</b><span class="d">A caller who cannot speak safely becomes a silent critical alert, not a question asked twice</span></div><span class="pill red">Silence</span></div>
   </div>
-  <div class="foot"><span>Live voice needs an Africa's Talking voice number; the demo uses the built-in simulator</span><span><b>Sauti Salama</b></span></div>
+  <div class="foot"><span>The model may ask, never state: any generated line containing a digit is refused, so the line cannot invent a helpline number</span><span><b>Sauti Salama</b></span></div>
 </section>
 
 <!-- 7 -->
@@ -243,7 +242,7 @@ Reply ACK SS-S6X6 to accept.</div>
   <div class="kicker">Why it is worth developing</div>
   <h2>Cheap to run, nothing new in anyone's hands, and it creates the data counties lack.</h2>
   <div class="grid g3">
-    <div class="card"><div class="num" style="font-size:56px">KSh 0</div><p style="margin-top:12px">for the survivor. USSD and SMS cost cents per report; the AI costs a fraction of a cent.</p></div>
+    <div class="card"><div class="num" style="font-size:56px">1 SMS</div><p style="margin-top:12px">is what a report costs her: no app, no bundle, no smartphone. Zero-rating the code is the first thing we negotiate.</p></div>
     <div class="card"><div class="num" style="font-size:56px">0 MB</div><p style="margin-top:12px">of data needed on the survivor's side. Works on every phone in Kenya.</p></div>
     <div class="card"><div class="num" style="font-size:56px">Ward</div><p style="margin-top:12px">level, anonymised patterns for county GBV working groups. Never a case.</p></div>
   </div>
@@ -256,10 +255,10 @@ Reply ACK SS-S6X6 to accept.</div>
   <h1 style="font-size:64px">A supervised pilot with the community that will run it.</h1>
   <div class="grid g3" style="margin-top:34px">
     <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Pilot</h3><p style="color:#E8DCF5">Two Nairobi responder networks and one GBV Recovery Centre as the escalation desk</p></div>
-    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Measure</h3><p style="color:#E8DCF5">Time to accept and survivor-reported outcomes</p></div>
-    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Next</h3><p style="color:#E8DCF5">Live voice number, recorded Kiswahili prompts, three more languages, telco zero-rating</p></div>
+    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Measure</h3><p style="color:#E8DCF5">Time to accept, time to reach her, and survivor-reported outcomes</p></div>
+    <div class="card" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)"><h3 style="color:#fff">Next</h3><p style="color:#E8DCF5">Live voice number, a real-time Kiswahili voice, three more languages, telco zero-rating</p></div>
   </div>
-  <p class="lead" style="margin-top:34px">The code runs today on a KSh 0 phone. What it needs next is a community to run it with. <b style="color:#fff">Asante.</b></p>
+  <p class="lead" style="margin-top:34px">The code runs today on the cheapest phone in Kenya. What it needs next is a community to run it with. <b style="color:#fff">Asante.</b></p>
   <div class="foot"><span><b>github.com/swiftkimani/sauti-salama</b></span><span>Benard Kimani</span></div>
 </section>
 

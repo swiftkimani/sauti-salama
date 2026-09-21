@@ -1,31 +1,44 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThan, Repository } from 'typeorm';
+import { In, LessThan, Not, Repository } from 'typeorm';
 import { Case } from '../entities/case.entity';
-import { CaseEventsService } from './case-events.service';
+import { CLOSED, deleteCase } from './cases.service';
 
-/** Storage limitation: closed cases are purged after RETENTION_DAYS (default 90). */
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Storage limitation (Kenya DPA 2019 s.25):
+ *  - closed cases are purged RETENTION_DAYS (default 90) after their last update;
+ *  - cases never closed (open, escalated, acknowledged but not resolved) are purged after RETENTION_OPEN_DAYS
+ *    (default 365) without any update, so an abandoned report is not kept forever. 0 keeps them indefinitely.
+ */
 @Injectable()
-export class RetentionService implements OnModuleInit {
+export class RetentionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RetentionService.name);
+  private timer?: NodeJS.Timeout;
 
-  constructor(@InjectRepository(Case) private readonly cases: Repository<Case>, private readonly events: CaseEventsService) {}
+  constructor(@InjectRepository(Case) private readonly cases: Repository<Case>) {}
 
   async onModuleInit() {
     await this.purge().catch((e) => this.logger.error(`purge failed: ${e}`));
-    const t = setInterval(() => this.purge().catch((e) => this.logger.error(`purge failed: ${e}`)), 24 * 60 * 60 * 1000);
-    t.unref?.();
+    this.timer = setInterval(() => this.purge().catch((e) => this.logger.error(`purge failed: ${e}`)), DAY);
+    this.timer.unref?.();
   }
 
-  async purge(): Promise<number> {
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  async purge(now = Date.now()): Promise<{ closed: number; stale: number }> {
     const days = Number(process.env.RETENTION_DAYS || 90);
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const old = await this.cases.find({ where: { status: In(['RESOLVED', 'FALSE_ALARM']), updatedAt: LessThan(cutoff) } });
-    for (const c of old) {
-      await this.events.deleteForCase(c.id);
-      await this.cases.delete({ id: c.id });
-    }
-    if (old.length) this.logger.log(`Retention: purged ${old.length} closed case(s) older than ${days} days`);
-    return old.length;
+    const openDays = Number(process.env.RETENTION_OPEN_DAYS ?? 365);
+    const closed = await this.cases.find({ select: { id: true }, where: { status: In(CLOSED), updatedAt: LessThan(new Date(now - days * DAY)) } });
+    const stale = openDays > 0
+      ? await this.cases.find({ select: { id: true }, where: { status: Not(In(CLOSED)), updatedAt: LessThan(new Date(now - openDays * DAY)) } })
+      : [];
+    for (const { id } of [...closed, ...stale]) await deleteCase(this.cases, id);
+    if (closed.length) this.logger.log(`Retention: purged ${closed.length} closed case(s) older than ${days} days`);
+    if (stale.length) this.logger.warn(`Retention: purged ${stale.length} never-closed case(s) with no update for ${openDays} days`);
+    return { closed: closed.length, stale: stale.length };
   }
 }

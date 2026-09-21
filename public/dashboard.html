@@ -334,7 +334,9 @@ async function refresh() {
   renderLive();
 }
 async function refreshHealth() {
-  try { state.health = await (await fetch('/api/health')).json(); } catch { /* shown as offline by refresh() */ }
+  // Configuration details sit behind the token; a 401 is handled by refresh().
+  if (!state.authed) return;
+  try { state.health = await api('/api/status'); } catch { /* shown as offline by refresh() */ }
   renderSystem();
 }
 
@@ -584,9 +586,14 @@ function detailHtml() {
     </div></li>`).join('');
 
   const silent = String(d.channel).includes('silent');
+  const untranscribed = d.triage && d.triage.provider === 'untranscribed';
   const narrative = d.narrative
     ? `<blockquote class="narrative">${esc(d.narrative)}</blockquote>`
-    : `<p class="narrative none">${silent ? 'Silent alert: the survivor could not speak or type, so there is no statement by design.' : d.status === 'PROCESSING' ? 'The recording is still being transcribed.' : 'No statement. This report was made through menu choices.'}</p>`;
+    : `<p class="narrative none">${d.narrativeUnreadable ? 'The statement is stored but could not be decrypted. Report this to the system administrator.'
+      : silent ? 'Silent alert: the survivor could not speak or type, so there is no statement by design.'
+      : d.status === 'PROCESSING' ? 'The recording is still being transcribed.'
+      : untranscribed ? 'The call recording could not be transcribed, so there is no statement. Treat the case as urgent.'
+      : 'No statement. This report was made through menu choices.'}</p>`;
 
   let contact;
   if (!d.phoneMasked) contact = `<div class="contact-status none">${icon('info')}<div><b>No phone number captured</b></div></div>`;

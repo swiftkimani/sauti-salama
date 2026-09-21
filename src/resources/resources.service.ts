@@ -21,13 +21,22 @@ export class ResourcesService implements OnModuleInit {
 
   all(): Resource[] { return this.cache; }
 
-  /** Best entry for a category: local match first, then a verified national one. */
+  /**
+   * Best entry for a category, verified only: a number nobody has confirmed must never reach a
+   * survivor as though it had been. A category with nothing verified falls back to the national
+   * helpline - free, 24/7, and able to refer onwards - rather than to an unchecked number.
+   */
   pick(category: string, coverage?: string): Resource | undefined {
-    const c = this.cache.filter((r) => r.category === category);
+    const c = this.cache.filter((r) => r.category === category && r.verified);
     if (coverage) {
       const local = c.find((r) => r.coverage.toLowerCase() === String(coverage).toLowerCase());
       if (local) return local;
     }
-    return c.find((r) => r.coverage === 'national' && r.verified) || c.find((r) => r.coverage === 'national') || c[0];
+    return c.find((r) => r.coverage === 'national') || c[0] || this.helpline();
+  }
+
+  /** The one entry every other category can fall back to. */
+  private helpline(): Resource | undefined {
+    return this.cache.find((r) => r.category === 'helpline' && r.verified && r.coverage === 'national');
   }
 }

@@ -62,7 +62,6 @@ export function extractPlaces(text: string): string[] {
 }
 
 const has = (t: string, list: string[]) => list.some((k) => t.includes(k));
-const found = (t: string, list: string[]) => list.filter((k) => t.includes(k));
 
 export function detectLanguage(text: string, fallback: string): string {
   const tokens = ` ${text.toLowerCase()} `.split(/[^a-z']+/).filter(Boolean);
@@ -229,6 +228,21 @@ export function silentTriage(input: TriageInput): TriageResult {
   r.summary_sw = `ARIFA YA KIMYA kupitia ${input.channel.replace('_', ' ')}: mpigaji ameonyesha yuko hatarini sasa hivi na hakuweza kuongea au kuandika zaidi. Eneo: ${input.hints?.ward || 'halijatajwa'}.`;
   r.provider = 'silent';
   r.confidence = 0.9;
+  return r;
+}
+
+/**
+ * A voice report whose recording could not be turned into text. Nothing is known about what happened, so the
+ * case is kept high rather than guessed at, and the brief says plainly that the content is missing.
+ */
+export function untranscribedTriage(input: TriageInput): TriageResult {
+  const r = rulesTriage({ ...input, text: '' });
+  r.urgency = 'high';
+  r.needs = Array.from(new Set(['counselling', ...r.needs]));
+  r.summary_en = `Voice report via ${input.channel.replace('_', ' ')}: the recording could not be transcribed, so what happened is unknown. Treat as urgent; contact the caller only if they said this phone is safe.`;
+  r.summary_sw = `Ripoti ya sauti kupitia ${input.channel.replace('_', ' ')}: rekodi haikuweza kugeuzwa kuwa maandishi, kwa hiyo kilichotokea hakijulikani. Ichukulie kuwa ya dharura; wasiliana na mpigaji tu ikiwa alisema simu hii ni salama.`;
+  r.provider = 'untranscribed';
+  r.confidence = 0;
   return r;
 }
 
