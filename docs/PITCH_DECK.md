@@ -13,7 +13,7 @@ Benard Kimani - OSF x Andela Hackathon 2026 - Safety, Reporting & Protection.
 
 **2. The invisible line**
 Visual: a feature phone next to a smartphone; one stat block.
-KDHS 2022: over 40% of ever-partnered women have experienced intimate-partner violence; 34% of all women physical violence since 15; 13-14% sexual violence. Most never seek formal help.
+KDHS 2022: 41% of ever-partnered women aged 15-49 have experienced economic, emotional, physical or sexual violence from a partner - the figure covers all four forms, so quote it that way. 34% of all women have experienced physical violence since 15; 13-14% sexual violence. Most never seek formal help.
 *Say:* "The barriers are practical: no airtime, no data, no privacy, no idea that post-rape care is free and only works for 72 hours."
 
 **3. What exists today**
@@ -22,7 +22,7 @@ Visual: three columns - Helpline 1195 (call only), NGO apps (smartphone + data),
 
 **4. The idea in one sentence**
 "Any phone. No internet. No app. Three key presses to reach a vetted neighbour."
-Visual: three channels - Call line - USSD `*384*7262#` - SMS - feeding one backend.
+Visual: three channels - Call line - USSD `*384*7262#` - SMS - feeding one backend. Say "no data bundle and nothing in her inbox", not "no trace": operator records still exist.
 
 **5. Live demo (the golden path)**
 Cut to the demo video or do it live: USSD "I am in danger NOW" -> responder SMS arrives in under 5 seconds -> console shows the case -> responder ACKs by SMS -> survivor checks status -> survivor erases the report.
@@ -30,7 +30,7 @@ Cut to the demo video or do it live: USSD "I am in danger NOW" -> responder SMS 
 
 **6. The call line**
 Visual: the call transcript from the simulator - the line's questions and the caller's answers, with the responder alert firing after the first sentence.
-*Say:* "There is no menu. The line answers, listens, and asks one question at a time, the way an emergency call is taken - and it alerts a responder from her first sentence, not at the end of the call. It only asks what changes what a responder does. Consent is spoken, not keyed. And if she says nothing at all, that is not a failed call: it becomes a silent critical alert. The model chooses the questions; every fact she hears is reviewed text, and any generated line containing a digit is refused, so the line cannot invent a helpline number."
+*Say:* "There is no menu. The line answers, listens, and asks one question at a time, the way an emergency call is taken - and it alerts a responder from her first sentence, not at the end of the call. It only asks what changes what a responder does. Consent is spoken, not keyed. And if she says nothing at all, that is not a failed call: it becomes a silent critical alert. The model chooses which question to ask next, but it can never write one: every line a caller hears is reviewed text held in the repository, enforced by an allow-list. That is why the line cannot invent a helpline number."
 
 **7. AI structures, humans decide**
 Visual: raw Kiswahili/Sheng SMS on the left -> structured brief on the right (type, urgency, 72h flag, risk flags, EN+SW summary).
