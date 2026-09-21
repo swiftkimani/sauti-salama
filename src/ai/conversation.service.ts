@@ -7,7 +7,7 @@ import { Lang, TriageResult } from './triage.types';
 export interface CallState {
   lang: Lang;
   turns: CallTurn[];
-  /** Question keys (offline bank) or the generated questions already asked, so nothing is asked twice. */
+  /** Question keys, or the reviewed question text already asked, so nothing is asked twice. */
   asked: string[];
 }
 
@@ -51,7 +51,7 @@ export class ConversationService {
         triage = normalizeTriage(data, input, floor, provider);
         lang = data?.reply_language === 'sw' ? 'sw' : data?.reply_language === 'en' ? 'en' : lang;
         enough = !!data?.enough_information;
-        const generated = validateQuestion(data?.next_question);
+        const generated = validateQuestion(data?.next_question, lang);
         if (!enough) {
           question = generated;
           questionKey = generated;

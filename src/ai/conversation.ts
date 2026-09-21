@@ -2,9 +2,11 @@ import { CALL } from '../i18n/call';
 import { TRIAGE_JSON_SCHEMA } from './prompts';
 import { Lang, TriageResult } from './triage.types';
 
+const REVIEWED_QUESTIONS = Object.values(CALL.questions).flatMap((q) => [q.en, q.sw]);
+
 /**
  * The call line answers like a person taking an emergency call, not like a menu: the model listens, keeps the
- * responder brief up to date, and chooses the next question. It may write questions, never facts - see
+ * responder brief up to date, and chooses the next question. It selects reviewed questions rather than writing caller-facing text - see
  * validateQuestion() and src/i18n/call.ts.
  */
 export const CALL_SYSTEM_PROMPT = `You are the intake voice of Sauti Salama, a gender-based violence (GBV) line in Kenya. You are speaking with someone on a phone call, live. They may be a survivor, or calling for someone else, in English, Kiswahili, Sheng or a mix. A trained human responder acts on what you collect; you are not the responder and not a counsellor.
@@ -14,7 +16,8 @@ Your job on every turn:
 2. Decide the ONE next thing to ask, or say that you have enough to let the caller go.
 
 How to speak:
-- One short question, at most 20 words, in the caller's language. No greetings, no small talk, no repeating what they said back to them at length.
+- Select the next question verbatim from the reviewed bank below, in the caller's language. Do not compose or modify a question.
+${REVIEWED_QUESTIONS.map((q) => `- ${q}`).join('\n')}
 - Calm and direct. Never blame, never ask why they did or did not do something, never ask for names or ID numbers.
 - Ask only what changes what the responder does: are they safe now, where they are, what happened, who did it, injuries, children present.
 - Never state facts, numbers, phone numbers, deadlines, legal or medical advice, or what will happen next. The line adds those itself from reviewed text. Never put digits in your question.
@@ -33,7 +36,7 @@ export const CALL_JSON_SCHEMA = {
   required: [...TRIAGE_JSON_SCHEMA.required, 'next_question', 'enough_information', 'reply_language'],
   properties: {
     ...TRIAGE_JSON_SCHEMA.properties,
-    next_question: { type: 'string' },
+    next_question: { type: 'string', enum: ['', ...REVIEWED_QUESTIONS] },
     enough_information: { type: 'boolean' },
     reply_language: { type: 'string', enum: ['en', 'sw'] },
   },
@@ -54,16 +57,16 @@ export function buildCallMessage(turns: CallTurn[], asked: string[]): string {
 }
 
 /**
- * A generated question is only allowed to be a question. Digits are refused outright: it is how "call 999" or an
- * invented phone number would reach a caller, and every real number the line gives comes from reviewed text.
+ * Only reviewed wording reaches the caller. A digit or URL filter cannot reject advice, promises or a phone
+ * number spelled as words, so the model selects from the bank rather than composing, and what comes back is
+ * checked against the bank again here. Passing `lang` also refuses a question in the wrong language: the
+ * fallback then supplies the same slot in the language the caller is actually speaking.
  */
-export function validateQuestion(raw: unknown): string | null {
+export function validateQuestion(raw: unknown, lang?: Lang): string | null {
   if (typeof raw !== 'string') return null;
   const text = raw.replace(/\s+/g, ' ').replace(/^["'\s-]+|["'\s]+$/g, '').trim();
-  if (text.length < 4 || text.length > 200) return null;
-  if (/\d/.test(text)) return null;
-  if (/(https?:|www\.|@)/i.test(text)) return null;
-  return text;
+  const allowed = lang ? Object.values(CALL.questions).map((q) => (lang === 'sw' ? q.sw : q.en)) : REVIEWED_QUESTIONS;
+  return allowed.includes(text) ? text : null;
 }
 
 /** What the responder still cannot see from the brief, in the order a responder needs it. */
