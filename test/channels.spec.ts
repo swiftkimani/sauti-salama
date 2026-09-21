@@ -127,6 +127,75 @@ describe('channels', () => {
       expect(await cases.findByRef(c.ref)).toBeNull();
     });
 
+    // A survivor's first word is not an instruction. Every case below used to be swallowed by a
+    // keyword and lose the report - and, for STOP, delete the case the report belonged to.
+    describe('a keyword at the start of a sentence is a report, not a command', () => {
+      it('triages "Help me ..." instead of answering with the information leaflet', async () => {
+        await text(SURVIVOR, 'Help me my husband is beating me right now and he has a knife');
+        const c = await latestCase();
+        expect(c.channel).toBe('sms');
+        expect(c.urgency).toBe('critical');
+        expect(c.triage.risk_flags).toContain('weapon');
+        await eventually(async () => h.sms.sentTo(TIER1).find((m) => m.message.includes(c.ref)));
+      });
+
+      it('triages "Msaada ..." in Kiswahili', async () => {
+        await text(SURVIVOR, 'Msaada mume wangu ananipiga sasa hivi, yuko na kisu');
+        const c = await latestCase();
+        expect(c.channel).toBe('sms');
+        expect(c.triage.violence_types).toContain('physical');
+        expect(c.urgency).toBe('critical');
+      });
+
+      it('does NOT erase a case because a message starts with STOP', async () => {
+        const c = await report();
+        await text(SURVIVOR, 'Stop him he is going to kill me tonight please');
+        expect(await cases.findByRef(c.ref)).not.toBeNull(); // her report is still there
+        const [fresh] = (await h.cases.find()).filter((x) => x.id !== c.id);
+        expect(fresh.channel).toBe('sms');
+        expect(fresh.triage.immediate_danger).toBe(true); // and the new danger was triaged
+      });
+
+      it('keeps the danger in "Yes he is still here" instead of reading it as consent', async () => {
+        const c = await report();
+        await text(SURVIVOR, 'Yes he is still here with a knife and the children are crying');
+        expect((await h.cases.findOneByOrFail({ id: c.id })).safeToContact).toBe(false); // consent was never given
+        const [fresh] = (await h.cases.find()).filter((x) => x.id !== c.id);
+        expect(fresh.urgency).toBe('critical');
+        expect(fresh.triage.risk_flags).toEqual(expect.arrayContaining(['weapon', 'children_present']));
+      });
+
+      it('does not drop a report from an unregistered phone that starts with SAFE', async () => {
+        await text(STRANGER, 'Safe place please, he is outside the door and I cannot leave');
+        const c = await latestCase();
+        expect(c.channel).toBe('sms');
+        expect(c.triage.immediate_danger).toBe(true);
+      });
+    });
+
+    describe('bare keywords still work', () => {
+      it('answers a bare HELP with information and no case', async () => {
+        await text(SURVIVOR, 'HELP');
+        expect(await h.cases.count()).toBe(0);
+        expect(h.sms.sentTo(SURVIVOR)[0].message).toMatch(/free help 24hrs on 1195/);
+      });
+
+      it('asks for the reference before erasing when STOP arrives alone', async () => {
+        const c = await report();
+        await text(SURVIVOR, 'STOP');
+        expect(await cases.findByRef(c.ref)).not.toBeNull();
+        expect(h.sms.sentTo(SURVIVOR).some((m) => m.message.includes(`reply STOP ${c.ref}`))).toBe(true);
+        await text(SURVIVOR, `STOP ${c.ref}`);
+        expect(await cases.findByRef(c.ref)).toBeNull();
+      });
+
+      it('takes a bare YES as consent to be texted', async () => {
+        const c = await report();
+        await text(SURVIVOR, 'YES');
+        expect((await h.cases.findOneByOrFail({ id: c.id })).safeToContact).toBe(true);
+      });
+    });
+
     // A multipart alert can reach a feature phone with its later parts missing, so everything a
     // responder needs to act has to survive truncation at the first segment boundary.
     it('puts urgency, reference, area, contact rule and ACK in the first SMS segment', async () => {

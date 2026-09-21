@@ -83,8 +83,8 @@ export const SMS = {
     sw: `Sauti Salama ${ref}: ${sentence(steps)}Msaada saa 24: 1195. Jibu FUTA ${ref} kufuta ripoti yako.`,
   }),
   info: (lang: Lang) => t(lang, {
-    en: 'Sauti Salama: free help 24hrs on 1195. After sexual violence go to any health facility within 72hrs (free PEP + PRC form). Danger now: 999/112. Child: 116. Delete this SMS if needed.',
-    sw: 'Sauti Salama: msaada wa bure saa 24 kwa 1195. Baada ya dhuluma ya kingono nenda kituo cha afya ndani ya saa 72 (PEP na PRC bure). Hatari sasa: 999/112. Mtoto: 116. Futa SMS hii ukihitaji.',
+    en: 'Sauti Salama: free help 24hrs on 1195. After sexual violence go to any health facility within 72hrs (free PEP + PRC form). Danger now: 999/112. Child: 116. Reply with what is happening and a trusted responder will be alerted. Delete this SMS if needed.',
+    sw: 'Sauti Salama: msaada wa bure saa 24 kwa 1195. Baada ya dhuluma ya kingono nenda kituo cha afya ndani ya saa 72 (PEP na PRC bure). Hatari sasa: 999/112. Mtoto: 116. Jibu ukieleze kinachoendelea na mhudumu wa kuaminika ataarifiwa. Futa SMS hii ukihitaji.',
   }),
   acknowledged: (lang: Lang, ref: string, name: string) => t(lang, {
     en: `Sauti Salama ${ref}: responder ${name} has accepted your case and will follow up as agreed. Free help 24hrs: 1195.`,
@@ -93,6 +93,11 @@ export const SMS = {
   ackConfirm: (ref: string, name: string) => `Sauti Salama: ACK recorded for ${ref} by ${name}. Open the console for details. Reply RESOLVE ${ref} when the survivor is safe.`,
   resolveConfirm: (ref: string) => `Sauti Salama: ${ref} marked resolved. Thank you.`,
   deleted: (lang: Lang, ref: string) => t(lang, { en: `Sauti Salama: report ${ref} and all its data were permanently deleted.`, sw: `Sauti Salama: ripoti ${ref} na data yake yote imefutwa kabisa.` }),
+  /** Nothing is erased until the survivor sends the reference back: a hard delete has no undo. */
+  confirmDelete: (lang: Lang, ref: string) => t(lang, {
+    en: `Sauti Salama: to permanently delete report ${ref}, reply STOP ${ref}. Nothing is deleted until you do. Free help 24hrs: 1195.`,
+    sw: `Sauti Salama: kufuta ripoti ${ref} kabisa, jibu FUTA ${ref}. Hakuna kinachofutwa hadi ufanye hivyo. Msaada saa 24: 1195.`,
+  }),
   policeChoice: (lang: Lang, ref: string, yes: boolean) => t(lang, yes
     ? { en: `Sauti Salama ${ref}: noted. Your responder will help you report to the police.`, sw: `Sauti Salama ${ref}: tumepokea. Mhudumu wako atakusaidia kuripoti kwa polisi.` }
     : { en: `Sauti Salama ${ref}: noted. Nobody will involve the police unless you ask.`, sw: `Sauti Salama ${ref}: tumepokea. Hakuna atakayehusisha polisi usipoomba.` }),
