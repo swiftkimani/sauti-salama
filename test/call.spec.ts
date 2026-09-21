@@ -14,12 +14,22 @@ describe('generated questions are only questions', () => {
     ['an empty answer', '  '],
     ['a speech', `Are you safe ${'and calm '.repeat(40)}?`],
     ['a non-string', 42],
+    ['a phone number in words', 'Call nine nine nine now, are you safe?'],
+    ['an unsupported promise', 'A responder is coming to your home.'],
+    ['advice disguised as a question', 'Can you confront him and take the knife?'],
+    ['an unreviewed question', 'What is your full name?'],
   ])('refuses %s', (_name, value) => {
     expect(validateQuestion(value)).toBeNull();
   });
+  it('refuses a reviewed question in the wrong language, so the fallback supplies the right one', () => {
+    expect(validateQuestion(CALL.questions.location.en, 'sw')).toBeNull();
+    expect(validateQuestion(CALL.questions.location.sw, 'sw')).toBe(CALL.questions.location.sw);
+    expect(validateQuestion(CALL.questions.location.en, 'en')).toBe(CALL.questions.location.en);
+  });
+
   it('keeps a plain question and tidies it', () => {
-    expect(validateQuestion('  "Where are you right now?"  ')).toBe('Where are you right now?');
-    expect(validateQuestion('Yuko na wewe sasa?')).toBe('Yuko na wewe sasa?');
+    expect(validateQuestion(`  "${CALL.questions.location.en}"  `)).toBe(CALL.questions.location.en);
+    expect(validateQuestion(CALL.questions.location.sw)).toBe(CALL.questions.location.sw);
   });
   it('asks for what a responder is missing, most important first', () => {
     const unclear = rulesTriage({ text: 'he hit me', language: 'en', channel: 'voice' });
@@ -166,7 +176,7 @@ describe('the call line', () => {
       perpetrator_relationship: 'intimate_partner', survivor_age_group: 'adult', hours_since_incident: 1,
       location_mentions: ['Kayole'], needs: ['medical'], language_detected: 'sw',
       summary_en: 'The caller is being beaten by her husband, who is present with a knife.', summary_sw: 'Mpigaji anapigwa na mumewe, ambaye yuko na kisu.',
-      risk_flags: ['weapon'], confidence: 0.9, next_question: 'Uko wapi sasa hivi?', enough_information: false, reply_language: 'sw', ...over,
+      risk_flags: ['weapon'], confidence: 0.9, next_question: CALL.questions.location.sw, enough_information: false, reply_language: 'sw', ...over,
     });
     const groqReplies = (...bodies: unknown[]) => {
       const fn = jest.fn();
@@ -179,7 +189,7 @@ describe('the call line', () => {
       const fetchMock = groqReplies(brief());
       await voice.entry(call);
       const xml = await said(BEATEN);
-      expect(spoken(xml)).toBe('Uko wapi sasa hivi?');
+      expect(spoken(xml)).toBe(CALL.questions.location.sw);
       const sent = JSON.parse((fetchMock.mock.calls[0][1] as any).body);
       expect(sent.messages[0].content).toMatch(/You are the intake voice of Sauti Salama/);
       expect(sent.messages[1].content).toMatch(/<call>[\s\S]*husband beat me[\s\S]*<\/call>/);
