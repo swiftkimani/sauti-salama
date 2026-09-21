@@ -42,7 +42,7 @@ describe('channels', () => {
       expect((await latestCase()).consentSharePolice).toBe(false);
     });
 
-    it('raises a critical silent alert in two key presses', async () => {
+    it('raises a critical silent alert in three inputs: language, danger, area', async () => {
       expect(await dial('1*2*0')).toMatch(/^END Alert sent/);
       expect(await latestCase()).toMatchObject({ channel: 'ussd_silent', urgency: 'critical' });
     });
