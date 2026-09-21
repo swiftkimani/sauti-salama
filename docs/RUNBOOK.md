@@ -117,7 +117,9 @@ at all. Check `/api/status` after any change to those settings:
 
 ## 10. Limits of a single instance
 
-Escalation is safe to run on several instances (deadlines are claimed in the database). These are not, and need Redis or sticky sessions before scaling out: the IVR session state (language, which case the call belongs to), the per-phone rate limiters, the API/webhook throttler, the AI budget, and the SMS outbox with its delivery reports.
+**Run exactly one instance until these move to shared state.** Escalation is safe on several (deadlines are claimed in the database). These are not, and need Redis or sticky sessions before scaling out: the call session state (language, turns so far, which case the call belongs to), the per-phone rate limiters, the API/webhook throttler, the AI budget, and the SMS outbox with its delivery reports.
+
+The call session is the one that fails visibly rather than quietly. A turn callback that reaches an instance with no session for that call opens a **second case for the same caller** and starts the conversation again mid-disclosure; a restart during a call does the same. Every per-phone limit, including the ceiling on paid AI calls, also multiplies by the number of instances.
 
 ## 11. Dependencies
 
