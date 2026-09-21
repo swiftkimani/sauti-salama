@@ -2,7 +2,7 @@ import { CasesService } from '../src/cases/cases.service';
 import { SmsInboundService } from '../src/channels/sms/sms-inbound.service';
 import { UssdService } from '../src/channels/ussd/ussd.service';
 import { SMS, USSD } from '../src/i18n/messages';
-import { buildHarness, eventsOf, Harness, SURVIVOR, TIER1 } from './harness';
+import { buildHarness, eventsOf, eventually, Harness, SURVIVOR, TIER1 } from './harness';
 
 const STRANGER = '+254799999999';
 
@@ -125,6 +125,21 @@ describe('channels', () => {
       expect(await cases.findByRef(c.ref)).not.toBeNull();
       await text(SURVIVOR, `FUTA ${c.ref}`);
       expect(await cases.findByRef(c.ref)).toBeNull();
+    });
+
+    // A multipart alert can reach a feature phone with its later parts missing, so everything a
+    // responder needs to act has to survive truncation at the first segment boundary.
+    it('puts urgency, reference, area, contact rule and ACK in the first SMS segment', async () => {
+      await text(SURVIVOR, 'He beat me again last night in Kayole with a panga, he is still here and says he will kill me');
+      const c = await latestCase();
+      const alert = await eventually(async () => h.sms.sentTo(TIER1).find((m) => m.message.includes(c.ref)));
+      const first = alert.message.split('\n--\n')[0];
+      expect(first.length).toBeLessThanOrEqual(160);
+      expect(first).toContain('[CRITICAL]');
+      expect(first).toContain(c.ref);
+      expect(first).toContain('Kayole');
+      expect(first).toContain('DO NOT call or text');
+      expect(first).toContain(`Reply ACK ${c.ref} to accept.`);
     });
   });
 

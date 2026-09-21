@@ -148,19 +148,27 @@ export class NotifyService implements OnModuleInit, OnModuleDestroy {
     return { sent: ok.length, detail };
   }
 
-  private responderSms(c: Case, tier: 1 | 2): string {
-    const summary = (c.triage?.summary_en || 'Report received, details pending.').slice(0, 220);
-    const next = c.pathway ? this.referral.survivorSteps(c.pathway, 'en', 1) : 'see console';
-    return [
-      `SAUTI SALAMA ${tier === 2 ? 'ESCALATION' : 'ALERT'} [${c.urgency.toUpperCase()}] ${c.ref}`,
-      summary,
-      `Area: ${c.ward || 'not stated'} | Via: ${c.channel.replace('_', ' ')} | Lang: ${c.language}`,
-      `Next: ${next}`,
-      `Survivor phone: ${c.safeToContact ? 'consented - reveal in console' : 'NOT SAFE - do not call or text'}`,
-      // On a call the alert can go out before the caller has answered; the console always shows the latest answers.
-      `Police: ${c.consentSharePolice ? 'survivor asked for help reporting' : 'not requested (check console before any police step)'}`,
+  /**
+   * The first 160 characters are one whole SMS segment, and a multipart alert can reach a feature
+   * phone with its later parts missing. So everything needed to act - urgency, reference, area,
+   * whether the phone may be called, and how to accept - fits in that first segment; detail follows.
+   * The free-text brief is fenced and last: it is derived from what the caller said, not written by us.
+   */
+  private responderSms(c: Case, tier: 1 | 2, round = 1): string {
+    const label = tier === 1 ? 'ALERT' : round > 1 ? `ESCALATION x${round}` : 'ESCALATION';
+    const head = [
+      `SAUTI SALAMA ${label} [${c.urgency.toUpperCase()}] ${c.ref}`,
+      `Area: ${(c.ward || 'not stated').slice(0, 20)} | ${c.channel.replace('_', ' ')} | ${c.language}`,
+      `Phone: ${c.safeToContact ? 'consented, reveal in console' : 'DO NOT call or text'}`,
       `Reply ACK ${c.ref} to accept.`,
     ].join('\n');
+    const detail = [
+      `Next: ${c.pathway ? this.referral.survivorSteps(c.pathway, 'en', 1) : 'see console'}`,
+      // On a call the alert can go out before the caller has answered; the console always shows the latest answers.
+      `Police: ${c.consentSharePolice ? 'survivor asked for help reporting' : 'not requested (check console first)'}`,
+      `Brief: ${(c.triage?.summary_en || 'Report received, details pending.').slice(0, 200)}`,
+    ].join('\n');
+    return `${head}\n--\n${detail}`;
   }
 }
 
