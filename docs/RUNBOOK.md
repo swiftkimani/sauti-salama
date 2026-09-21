@@ -42,6 +42,7 @@ It also changes behaviour:
 | `API_RATE_LIMIT_PER_MINUTE` | 300 | Console API requests per client IP. |
 | `WEBHOOK_RATE_LIMIT_PER_MINUTE` | 600 | Webhook requests per source IP. Africa's Talking uses few IPs, so this is effectively a line-wide ceiling: raise it before a campaign. |
 | `RATE_LIMIT_REPLIES_PER_HOUR` | 10 | SMS replies to any one unregistered number. |
+| `ESCALATION_REPEAT_MINUTES` | `10,20` | Waits before the Tier-2 alert is repeated, one per repeat. After the last, the case is marked `UNANSWERED`. Empty = alert Tier 2 once. |
 | `RETENTION_OPEN_DAYS` | 365 | Never-closed cases with no update for this long are purged. 0 keeps them. |
 | `DB_MIGRATE_ON_START` | `true` | Run pending migrations when the app starts. |
 | `DB_SYNC` | `false` | Development only: let TypeORM change a throwaway Postgres schema. |
@@ -96,6 +97,7 @@ at all. Check `/api/status` after any change to those settings:
 * Uptime check on `GET /api/health` (it pings the database; 503 when it cannot).
 * Alert on these log lines:
   * `reached no Tier-2 desk` / audit event `ESCALATION_FAILED`: an escalation could not be delivered and is being retried every 2 minutes. Phone the Tier-2 desk.
+  * Audit event `UNANSWERED`: Tier 2 was alerted every time `ESCALATION_REPEAT_MINUTES` allows and nobody accepted the case. Nothing further is sent automatically - a survivor is still waiting. Alert on this event and phone the desk.
   * `not accepted by Africa's Talking`: SMS failing (balance, sender ID, network).
   * `Could not decrypt`: corrupt data or the wrong key.
   * `Unhandled` / `failed:` from the exception filter: a bug; USSD and voice callers were shown a "try again, call 1195" message.

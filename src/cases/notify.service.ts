@@ -13,12 +13,26 @@ import { ReferralService } from './referral.service';
 
 /** Statuses that still need somebody to accept the case. */
 export const AWAITING: CaseStatus[] = ['OPEN', 'PROCESSING'];
+/**
+ * Everything nobody has accepted yet - including a case Tier 2 has been told about. "Nobody answered
+ * the alert" is the normal failure in community response, not an edge case, so an escalated case stays
+ * in the sweeper's sight until a person accepts it or a coordinator is told plainly that none did.
+ */
+export const UNACCEPTED: CaseStatus[] = [...AWAITING, 'ESCALATED'];
 /** How often due escalations are looked for, and how long a claimed escalation waits before it is retried. */
 const SWEEP_MS = 15 * 1000;
 export const ESCALATION_RETRY_MS = 2 * 60 * 1000;
 
 export const escalationMinutes = () => Math.max(0, Number(process.env.ESCALATION_MINUTES ?? 10));
 export const escalationDeadline = (now = Date.now()) => new Date(now + escalationMinutes() * 60 * 1000);
+/**
+ * How long to wait for a Tier-2 acknowledgement before repeating the alert, one entry per repeat.
+ * After the last one the case is marked UNANSWERED: there is nobody left to page automatically.
+ * Set ESCALATION_REPEAT_MINUTES to an empty string to alert Tier 2 once and stop.
+ */
+export const escalationRepeats = (): number[] =>
+  (process.env.ESCALATION_REPEAT_MINUTES ?? '10,20').split(',')
+    .map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n > 0).map((m) => m * 60 * 1000);
 
 interface FanOut { sent: number; detail: string }
 
@@ -99,7 +113,7 @@ export class NotifyService implements OnModuleInit, OnModuleDestroy {
     if (this.sweeping) return 0;
     this.sweeping = true;
     try {
-      const due = await this.cases.find({ select: { id: true }, where: { status: In(AWAITING), escalateAt: LessThanOrEqual(now) }, order: { escalateAt: 'ASC' }, take: 50 });
+      const due = await this.cases.find({ select: { id: true }, where: { status: In(UNACCEPTED), escalateAt: LessThanOrEqual(now) }, order: { escalateAt: 'ASC' }, take: 50 });
       let escalated = 0;
       for (const { id } of due) {
         if (await this.escalate(id, now).catch((e) => { this.logger.error(`escalation of case ${id} failed: ${e}`); return false; })) escalated++;
@@ -113,19 +127,30 @@ export class NotifyService implements OnModuleInit, OnModuleDestroy {
   /** Returns true when Tier 2 was alerted. False when the case no longer needs it, another instance has it, or every alert failed (it is retried). */
   async escalate(id: string, now = new Date()): Promise<boolean> {
     // Claim: push the deadline out by the retry interval. Only one caller can win this update.
-    const claim = await this.cases.update({ id, status: In(AWAITING), escalateAt: LessThanOrEqual(now) }, { escalateAt: new Date(now.getTime() + ESCALATION_RETRY_MS) });
+    const claim = await this.cases.update({ id, status: In(UNACCEPTED), escalateAt: LessThanOrEqual(now) }, { escalateAt: new Date(now.getTime() + ESCALATION_RETRY_MS) });
     if (!claim.affected) return false;
     const c = await this.cases.findOne({ where: { id } });
     if (!c) return false;
-    const why = c.status === 'PROCESSING' ? 'Recording still unprocessed at the deadline' : 'No Tier-1 acknowledgement before the deadline';
-    const out = await this.fanOut(this.responders.forWard(c.ward, 2), this.responderSms(c, 2));
+    // How many times Tier 2 has already been told, so a repeat is numbered and eventually stops.
+    const sent = (await this.events.list(c.id)).filter((e) => e.type === 'ESCALATED' || e.type === 'ESCALATION_REPEATED').length;
+    const why = c.status === 'ESCALATED' ? `Still not accepted after Tier-2 alert ${sent}` :
+      c.status === 'PROCESSING' ? 'Recording still unprocessed at the deadline' : 'No Tier-1 acknowledgement before the deadline';
+    const out = await this.fanOut(this.responders.forWard(c.ward, 2), this.responderSms(c, 2, sent + 1));
     if (out.sent === 0) {
       this.logger.error(`Escalation of ${c.ref} reached no Tier-2 desk; retrying in ${ESCALATION_RETRY_MS / 60000} min`);
       await this.events.add(c.id, 'ESCALATION_FAILED', 'system', `${why}; ${out.detail}; retrying in ${ESCALATION_RETRY_MS / 60000} min`);
       return false;
     }
-    await this.cases.update({ id, status: In(AWAITING) }, { status: 'ESCALATED', escalateAt: null });
-    await this.events.add(c.id, 'ESCALATED', 'system', `${why}; Tier 2: ${out.detail}`);
+    const repeats = escalationRepeats();
+    const wait = repeats[sent];
+    await this.cases.update({ id, status: In(UNACCEPTED) }, { status: 'ESCALATED', escalateAt: wait ? new Date(now.getTime() + wait) : null });
+    await this.events.add(c.id, sent ? 'ESCALATION_REPEATED' : 'ESCALATED', 'system',
+      `${why}; Tier 2: ${out.detail}${wait ? `; repeating in ${wait / 60000} min if nobody accepts` : ''}`);
+    if (!wait) {
+      // Nothing is paged automatically from here. Say so loudly: a survivor is still waiting.
+      this.logger.error(`Case ${c.ref} was alerted to Tier 2 ${sent + 1} time(s) and nobody accepted it`);
+      await this.events.add(c.id, 'UNANSWERED', 'system', `Tier 2 alerted ${sent + 1} time(s); nobody accepted. A coordinator must act.`);
+    }
     return true;
   }
 

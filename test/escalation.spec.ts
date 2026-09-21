@@ -19,7 +19,7 @@ describe('escalation (stored deadline + sweeper)', () => {
     cases = h.app.get(CasesService);
     notify = h.app.get(NotifyService);
   });
-  afterEach(() => h.close());
+  afterEach(async () => { await h.close(); delete process.env.ESCALATION_REPEAT_MINUTES; });
 
   const report = async (over: Partial<Parameters<CasesService['createCase']>[0]> = {}) => {
     const c = await cases.createCase({ channel: 'ussd', language: 'en', phone: SURVIVOR, ward: 'Kayole', hints: { violence_type: 'physical', when: 'recent' }, ...over });
@@ -43,8 +43,47 @@ describe('escalation (stored deadline + sweeper)', () => {
     expect(await afterRestart.sweep(new Date(Date.now() + minutes(11)))).toBe(1);
     const escalated = await h.cases.findOneByOrFail({ id: c.id });
     expect(escalated.status).toBe('ESCALATED');
-    expect(escalated.escalateAt).toBeNull();
+    // Still waiting for a person: the alert repeats rather than the case going quiet.
+    expect(escalated.escalateAt).not.toBeNull();
     expect(h.sms.sentTo(TIER2)[0].message).toMatch(/ESCALATION/);
+  });
+
+  it('repeats the Tier-2 alert and finally marks the case unanswered', async () => {
+    process.env.ESCALATION_REPEAT_MINUTES = '10,20';
+    // A long ward and a consented phone are the longest the first segment can get.
+    const c = await report({ ward: 'Mukuru kwa Njenga, Viwandani ward, Embakasi South', safeToContact: true });
+    const at = (m: number) => new Date(Date.now() + minutes(m));
+
+    expect(await notify.sweep(at(11))).toBe(1);                       // Tier 2 told
+    expect(await notify.sweep(at(15))).toBe(0);                       // not yet due again
+    expect(await notify.sweep(at(22))).toBe(1);                       // repeat 1, after 10 min
+    expect(await notify.sweep(at(43))).toBe(1);                       // repeat 2, after a further 20 min
+    expect(await notify.sweep(at(120))).toBe(0);                      // nothing left to send automatically
+
+    const row = await h.cases.findOneByOrFail({ id: c.id });
+    expect(row.status).toBe('ESCALATED');
+    expect(row.escalateAt).toBeNull();
+    const types = (await eventsOf(h, c.id)).map((e) => e.type);
+    expect(types.filter((t) => t === 'ESCALATION_REPEATED')).toHaveLength(2);
+    expect(types).toContain('UNANSWERED');
+    expect(h.sms.sentTo(TIER2)).toHaveLength(3);
+    expect(h.sms.sentTo(TIER2)[0].message).toMatch(/ESCALATION x3/);  // newest first in the outbox
+    // Whatever the round or the ward, the part that says what to do survives on its own.
+    for (const m of h.sms.sentTo(TIER2)) {
+      const first = m.message.split('\n--\n')[0];
+      expect(first.length).toBeLessThanOrEqual(160);
+      expect(first).toContain(`Reply ACK ${c.ref} to accept.`);
+    }
+  });
+
+  it('stops repeating as soon as a responder accepts', async () => {
+    process.env.ESCALATION_REPEAT_MINUTES = '10,20';
+    const c = await report();
+    expect(await notify.sweep(new Date(Date.now() + minutes(11)))).toBe(1);
+    await cases.acknowledge(c.ref, 'GBV Recovery Centre desk');
+    expect(await notify.sweep(new Date(Date.now() + minutes(60)))).toBe(0);
+    expect(h.sms.sentTo(TIER2)).toHaveLength(1);
+    expect((await eventsOf(h, c.id)).map((e) => e.type)).not.toContain('UNANSWERED');
   });
 
   it('does not escalate an acknowledged case', async () => {
