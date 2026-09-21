@@ -39,110 +39,179 @@ const LEAD = 0.35, TAIL = 0.42;
 
 const SCENES = [
   {
-    id: 'title', card: true, title: 'Sauti Salama', seconds: 5.5,
-    lines: ['A gender-based violence reporting line for any phone in Kenya', 'No internet. No app. No smartphone.'],
-    say: 'More than four in ten Kenyan women with a partner have been hit or forced by him. Most never report it. Sauti Salama is a reporting line for any phone.',
+    "id": "title",
+    "card": true,
+    "title": "Sauti Salama",
+    "seconds": 5.5,
+    "lines": [
+      "Discreet reporting and trusted next steps on a basic phone",
+      "Working proof of concept · fictional cases and responders"
+    ],
+    "say": "A survivor may have a phone but no safe chance to speak or buy data. Sauti Salama connects discreet reporting to trusted next steps and a trackable human response."
   },
   {
-    id: 'call-idle', frame: 'f00.jpg', label: 'Call line', seconds: 5,
-    caption: 'The call line has no menu and no key presses. It answers, listens and asks — the way an emergency call is taken.',
-    say: 'This is the call line in our simulator, the caller\'s phone on the left. No menu, no key presses: it answers the way an emergency call is taken.',
+    "id": "call-idle",
+    "frame": "f00.jpg",
+    "label": "Call line",
+    "seconds": 5,
+    "caption": "Working simulator: typed transcripts exercise the voice workflow. This recording uses rules-based triage.",
+    "say": "This is our working simulator, using fictional cases and responders. Typed transcripts stand in for speech. The walkthrough uses rules based triage."
   },
   {
-    id: 'greeting', frame: 'f01.jpg', label: 'Call line', seconds: 5,
-    caption: 'It greets the caller in English and Kiswahili, then listens.',
-    say: [{ text: 'She calls. The line greets her in English and Kiswahili, then starts listening.' }, { lang: 'sw', text: 'Uko salama hapa. Niambie kinachoendelea.' }],
+    "id": "greeting",
+    "frame": "f01.jpg",
+    "label": "Call line",
+    "seconds": 5,
+    "caption": "The line greets in English and Kiswahili, then listens. Live voice requires a provisioned number and transcription.",
+    "say": "The line greets in English and Kiswahili, then listens. Live voice needs a provisioned number and transcription."
   },
   {
-    id: 'typing', frame: 'f02.jpg', label: 'Call line', seconds: 4.5,
-    caption: 'The caller speaks. In the simulator you type what she would say.',
-    say: 'You type what the caller would say. On a real call this is her voice, transcribed by Whisper.',
+    "id": "typing",
+    "frame": "f02.jpg",
+    "label": "Call line",
+    "seconds": 4.5,
+    "caption": "A fictional caller describes danger. The simulator posts to the same webhook used by the voice integration.",
+    "say": "Here we type a fictional report. The simulator sends it to the same webhook used by the voice integration."
   },
   {
-    id: 'alerted', frame: 'f03.jpg', label: 'Call line', seconds: 7.5,
-    caption: 'One sentence in, a vetted community responder is already alerted: CRITICAL, Kayole, abuser present, weapon — long before the call ends.',
-    say: 'On the right, one sentence in, an alert has already gone to a vetted responder in her ward. Critical. Kayole. Abuser present. A weapon. She is still on the call.',
+    "id": "alerted",
+    "frame": "f03.jpg",
+    "label": "Call line",
+    "seconds": 7.5,
+    "caption": "The responder outbox shows a critical alert while intake continues. Sending an alert does not prove help has arrived.",
+    "say": "An alert appears in the responder outbox while intake continues. It shows urgency, area and contact restrictions. An alert does not prove help has arrived."
   },
   {
-    id: 'reference', frame: 'f04.jpg', label: 'Call line', seconds: 6,
-    caption: 'It asks one question at a time, then reads the case reference back to her.',
-    say: 'The line then asks one question at a time, and reads her case reference back to her, so she can check on it later.',
+    "id": "reference",
+    "frame": "f04.jpg",
+    "label": "Call line",
+    "seconds": 6,
+    "caption": "The line asks for missing information, then reads a case reference.",
+    "say": "The line asks for missing information, then reads her case reference."
   },
   {
-    id: 'consent', frame: 'f05.jpg', label: 'Consent', seconds: 6.5,
-    caption: 'Consent is spoken, not keyed: is this phone safe to call or text? Anything unclear counts as no.',
-    say: 'Near the end it asks whether this phone is safe to call or text. She answers in words, not key presses. Anything unclear counts as no.',
+    "id": "consent",
+    "frame": "f05.jpg",
+    "label": "Consent",
+    "seconds": 6.5,
+    "caption": "Contact consent is spoken. Unclear answers default to no consent.",
+    "say": "It asks whether this phone is safe to call or text. An unclear answer defaults to no consent."
   },
   {
-    id: 'closing', frame: 'f06.jpg', label: 'Consent', seconds: 7,
-    caption: 'The closing is reviewed text only — 999, 112, 1195. The AI may ask questions; it may never state a fact or a number.',
-    say: 'The closing lines you see here are reviewed text. The model may ask questions; it may never state a fact or a number, so it cannot invent a helpline.',
+    "id": "closing",
+    "frame": "f06.jpg",
+    "label": "Consent",
+    "seconds": 7,
+    "caption": "Reviewed closing text and an allow-listed English/Kiswahili question bank constrain what callers hear.",
+    "say": "Closing text is reviewed. The revised implementation also restricts questions to an approved bilingual bank. Other model wording is rejected."
   },
   {
-    id: 'ussd', frame: 'f10.jpg', label: 'USSD', seconds: 7,
-    caption: 'USSD, for when speaking is not safe: two key presses and an area. Silent, and nothing is left in the call log.',
-    say: 'Now USSD, for a survivor who cannot speak. Two key presses and an area, and the alert is out. Silent, nothing left in the call log.',
+    "id": "ussd",
+    "frame": "f10.jpg",
+    "label": "USSD",
+    "seconds": 7,
+    "caption": "USSD danger flow: language, danger option, area. No mobile data; operator charges and device traces may remain.",
+    "say": "USSD offers a silent route: language, danger option, then area. No mobile data is needed. Operator charges and device traces may still remain."
   },
   {
-    id: 'sms', frame: 'f11.jpg', label: 'SMS', seconds: 5,
-    caption: 'SMS, in English, Kiswahili or Sheng.',
-    say: 'Third channel: a plain S M S, here in Sheng.',
+    "id": "sms",
+    "frame": "f11.jpg",
+    "label": "SMS",
+    "seconds": 5,
+    "caption": "SMS accepts free-text reports, including English, Kiswahili and Sheng.",
+    "say": "SMS accepts free text. Here the report is in Sheng."
   },
   {
-    id: 'reply', frame: 'f12.jpg', label: 'SMS', seconds: 6,
-    caption: 'One short, neutral reply — and nothing more until she says texting is safe.',
-    say: 'She gets one short, neutral reply, and nothing more until she replies that texting is safe.',
+    "id": "reply",
+    "frame": "f12.jpg",
+    "label": "SMS",
+    "seconds": 6,
+    "caption": "One initial reply asks whether further messages are safe. Shared-phone risks still need practitioner review.",
+    "say": "An initial reply asks whether further messages are safe. Shared phone risks still need practitioner review."
   },
   {
-    id: 'ack', frame: 'f13.jpg', label: 'SMS', seconds: 5.5,
-    caption: 'A registered responder accepts by SMS. Nobody else can.',
-    say: 'A responder accepts the case by texting back. Only registered responder numbers can do this.',
+    "id": "ack",
+    "frame": "f13.jpg",
+    "label": "SMS",
+    "seconds": 5.5,
+    "caption": "A registered responder can acknowledge by SMS. Acceptance is recorded against the case.",
+    "say": "A registered responder can acknowledge by SMS. The case records acceptance."
   },
   {
-    id: 'queue', frame: 'f14.jpg', label: 'Responder console', seconds: 6.5,
-    caption: 'The console lists the most urgent first, and shows nothing that identifies a survivor until a case is opened.',
-    say: 'This is the responder console. Cases are listed most urgent first, and nothing identifies a survivor until a case is opened.',
+    "id": "queue",
+    "frame": "f14.jpg",
+    "label": "Responder console",
+    "seconds": 6.5,
+    "caption": "The authenticated console orders cases by urgency and masks phone numbers.",
+    "say": "The authenticated console orders cases by urgency and masks phone numbers."
   },
   {
-    id: 'brief', frame: 'f15.jpg', label: 'Responder console', seconds: 7.5,
-    caption: 'The brief, in English and Kiswahili: what happened, who, where, danger now. A rules floor under the AI means danger can never be talked down.',
-    say: 'Opening the case shows the brief in English and Kiswahili: what happened, who, where, danger now. Underneath, a rules engine the A I can never talk danger down.',
+    "id": "brief",
+    "frame": "f15.jpg",
+    "label": "Responder console",
+    "seconds": 7.5,
+    "caption": "A structured brief supports human assessment. Rules preserve detected danger signals; they cannot guarantee detection of every risk.",
+    "say": "A structured brief supports human assessment. Optional AI adds interpretation. Rules preserve the danger signals they detect, but cannot guarantee that every risk is recognised."
   },
   {
-    id: 'pathway', frame: 'f16.jpg', label: 'Referral pathway', seconds: 7,
-    caption: 'Next steps with real deadlines: free care within 72 hours, the P3 form, safe shelter.',
-    say: 'Below the brief, next steps with real deadlines: free post-rape care within seventy two hours, the P three form, safe shelter.',
+    "id": "pathway",
+    "frame": "f16.jpg",
+    "label": "Referral pathway",
+    "seconds": 7,
+    "caption": "PEP: as soon as possible, no later than 72 hours. Emergency contraception: up to 120 hours. Other care remains important afterwards.",
+    "say": "Referral timing matters. HIV prevention should start as soon as possible, within seventy two hours. Emergency contraception may be offered within five days. Other care remains important afterwards."
   },
   {
-    id: 'police', frame: 'f17.jpg', label: 'Referral pathway', seconds: 6.5,
-    caption: 'Police only if the survivor asks for it. Her choice, never the default.',
-    say: 'Notice the police step. It is offered only if the survivor asks for it. Her choice, never the default.',
+    "id": "police",
+    "frame": "f17.jpg",
+    "label": "Referral pathway",
+    "seconds": 6.5,
+    "caption": "Police contact preferences are recorded. Child safeguarding requires a separately reviewed protocol.",
+    "say": "Police contact preferences are recorded. Child safeguarding requires a separately reviewed protocol."
   },
   {
-    id: 'accepted', frame: 'f18.jpg', label: 'Responder console', seconds: 5.5,
-    caption: 'Accepted in three minutes. Escalation stops and the survivor is told.',
-    say: 'The responder accepts, here in three minutes. Escalation stops and she is told. If nobody accepts, it goes to the tier two desk.',
+    "id": "accepted",
+    "frame": "f18.jpg",
+    "label": "Responder console",
+    "seconds": 5.5,
+    "caption": "Acceptance time is measured in the demo. Unaccepted cases escalate; completed assistance needs separate follow-up.",
+    "say": "The demo records time to acceptance. Unaccepted cases escalate. Completed assistance needs separate follow up."
   },
   {
-    id: 'privacy', frame: 'f19.jpg', label: 'Privacy', seconds: 7.5,
-    caption: 'When she said the phone is not safe, the number cannot be revealed at all — and every reveal is written to the audit log.',
-    say: 'On this case she said the phone is not safe, so the reveal button is dead. Every reveal is logged under a name.',
+    "id": "privacy",
+    "frame": "f19.jpg",
+    "label": "Privacy",
+    "seconds": 7.5,
+    "caption": "The reveal control requires safe-contact consent. Each reveal is logged.",
+    "say": "This phone was marked unsafe, so the reveal control is disabled. Each reveal is logged."
   },
   {
-    id: 'erase-confirm', frame: 'f22.jpg', label: 'Right to erasure', seconds: 6,
-    caption: 'Erasure is hers to ask for: the responder types the reference to confirm.',
-    say: 'And if she asks for her report to be deleted, the responder confirms by typing the reference.',
+    "id": "erase-confirm",
+    "frame": "f22.jpg",
+    "label": "Right to erasure",
+    "seconds": 6,
+    "caption": "Deletion requires the case reference. Survivor commands are tied to the reporting phone.",
+    "say": "Deletion requires the case reference. Survivor commands are tied to the reporting phone."
   },
   {
-    id: 'erased', frame: 'f23.jpg', label: 'Right to erasure', seconds: 6.5,
-    caption: 'The case and its whole audit trail are gone. A real hard delete — which is why there is no blockchain here.',
-    say: 'The case and its whole audit trail are gone. A real hard delete, which is why there is no blockchain anywhere near this.',
+    "id": "erased",
+    "frame": "f23.jpg",
+    "label": "Right to erasure",
+    "seconds": 6.5,
+    "caption": "Application case and audit records are deleted. Delivered SMS, provider logs and backups require separate controls.",
+    "say": "Application case and audit records are deleted. Delivered messages, provider logs and backups require separate controls."
   },
   {
-    id: 'end', card: true, title: 'Sauti Salama', seconds: 7,
-    lines: ['Voice, USSD and SMS over Africa’s Talking · NestJS · PostgreSQL', 'Open-weight AI behind a rules floor · AES-256-GCM · Kenya DPA 2019 by design'],
-    say: 'Voice, USSD and S M S over Africa\'s Talking. An open weight model behind a rules floor. Encrypted at rest, Kenya\'s Data Protection Act by design. A vetted neighbour first, and the police only if she chooses.',
-  },
+    "id": "end",
+    "card": true,
+    "title": "Sauti Salama",
+    "seconds": 7,
+    "lines": [
+      "Next: a supervised Nairobi pilot with an accountable operating partner",
+      "Measure completion, safe contact, response time and cost per referral"
+    ],
+    "say": "The next step is a supervised Nairobi pilot with an accountable operating partner. Measure completion, safe contact, response time and cost per referral. The software runs; real world impact remains to be tested."
+  }
 ];
 
 const shell = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });

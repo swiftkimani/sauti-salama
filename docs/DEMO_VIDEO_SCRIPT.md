@@ -1,6 +1,10 @@
 # Demo video
 
-Two cuts, both built from the same screenshots of the running system (a throwaway server: in-memory database, fictional responders, `demo-token`). Nothing in them is a mock-up.
+**Submission cut:** [sauti-salama-demo-vo.mp4](demo/sauti-salama-demo-vo.mp4) - the existing simulator screenshots and Kenyan English voice, with the narration corrected so nothing spoken outruns what the code does. The screenshots predate the responder-alert rewrite, so the alert shown in the outbox uses the older field order.
+
+The walkthrough uses typed transcripts and rules-based triage with fictional responders. It does not demonstrate a live voice deployment, secured partners or rescue outcomes.
+
+Two cuts, both built from the same screenshots of the running system (a throwaway server: in-memory database, fictional responders, `demo-token`). These are simulator screens with fictional cases and responders.
 
 | File | Length | Sound |
 |---|---|---|
@@ -16,7 +20,7 @@ npm run demo:video:vo     # narrated cut (needs edge-tts, see below)
 
 ## The voice
 
-* **en-KE-AsiliaNeural** — Kenyan English, female — narrates throughout.
+* **en-KE-ChilembaNeural** — Kenyan English, male — narrates throughout.
 * **sw-KE-ZuriNeural** — Kenyan Kiswahili — speaks the one Kiswahili line, where the video says the call line greets in both languages. You hear what a caller hears: *"Uko salama hapa. Niambie kinachoendelea."*
 
 Both come from Microsoft Edge's text-to-speech, which needs no account. Install once:
@@ -45,7 +49,7 @@ The picture is cut to the speech: each line is spoken first, measured, and its s
 | 4 | Caller's words typed | The simulator stands in for a phone, so the flow runs with no phone bill |
 | 5 | Responder alert in the outbox | **The moment:** one sentence in, a vetted responder is alerted — critical, Kayole, abuser present, weapon |
 | 6–8 | Question, reference, consent, closing | One question at a time; consent spoken, not keyed; the closing is reviewed text only |
-| 9 | USSD danger alert | For a survivor who cannot speak: two key presses, silent, nothing in the call log |
+| 9 | USSD danger alert | For a survivor who cannot speak: language, danger option and area; device/operator traces may remain |
 | 10–12 | SMS report, reply, responder ACK | Sheng and Kiswahili welcome; one neutral reply; only registered responders can accept |
 | 13–17 | Console: queue, brief, pathway, police, accepted | What a responder sees, the rules floor under the AI, deadlines that matter, police only on request |
 | 18 | Do-not-contact case | The number cannot be revealed at all; every reveal is in the audit log |
@@ -63,6 +67,6 @@ PORT=3200 SQLITE_PATH=:memory: DASHBOARD_TOKEN=demo-token DEMO_RESPONDER_PHONE=+
 # simulator: http://localhost:3200/simulator.html      console: http://localhost:3200/dashboard.html?token=demo-token
 ```
 
-Replace the images in `demo/frames/` (keep the file names) and rebuild. With `GROQ_API_KEY` set, the call line asks its own questions and the brief comes from the model; without it you get the reviewed fallback questions and the rules engine, which is what the current cut shows.
+Replace the images in `demo/frames/` (keep the file names) and rebuild. With `GROQ_API_KEY` set, the call line selects reviewed questions and the brief comes from the model; without it you get the reviewed fallback questions and the rules engine, which is what the current cut shows.
 
 Build scrap (scene PNGs, audio segments) goes to a temp directory, so only the two videos, `frames/` and `audio/` live in the repository.
