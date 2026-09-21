@@ -72,12 +72,17 @@ export class UssdService {
 
   private info(lang: Lang, a: string[]): string {
     if (a.length === 0) return t(lang, USSD.infoMenu);
-    const legal = this.resources.pick('legal')?.phone || '1195';
+    // Name whichever service was actually picked: with no verified legal entry this is the helpline,
+    // and the screen must not print its number under another organisation's name.
+    const legal = this.resources.pick('legal');
+    const legalName = (legal?.name || 'National GBV Helpline 1195').split('(')[0].trim();
+    const legalPhone = legal?.phone || '1195';
+    const legalService = legalName.endsWith(legalPhone) ? legalName : `${legalName} ${legalPhone}`;
     const gvrc = this.resources.pick('medical')?.phone || '1195';
     switch (a[0]) {
       case '1': return t(lang, USSD.info.medical);
       case '2': return t(lang, USSD.info.police);
-      case '3': return t(lang, USSD.info.legal(legal));
+      case '3': return t(lang, USSD.info.legal(legalService));
       case '4': return t(lang, USSD.info.shelter(gvrc));
       case '5': return t(lang, USSD.info.counselling);
       case '6': return t(lang, USSD.info.child);
