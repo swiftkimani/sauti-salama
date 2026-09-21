@@ -21,16 +21,16 @@ Visual: three columns - Helpline 1195 (call only), NGO apps (smartphone + data),
 *Say:* "All three require the survivor to speak, to have data, or to travel. If the abuser is in the next room, none of them work."
 
 **4. The idea in one sentence**
-"Any phone. No internet. No app. Two key presses to reach a vetted neighbour."
+"Any phone. No internet. No app. Three key presses to reach a vetted neighbour."
 Visual: three channels - Call line - USSD `*384*7262#` - SMS - feeding one backend.
 
 **5. Live demo (the golden path)**
 Cut to the demo video or do it live: USSD "I am in danger NOW" -> responder SMS arrives in under 5 seconds -> console shows the case -> responder ACKs by SMS -> survivor checks status -> survivor erases the report.
-*Say:* "Every step you saw works with zero data on the survivor's side."
+*Say:* "Every step you saw works with zero data on the survivor's side. And read the alert: everything the responder needs to act - how urgent, where, whether he may call her, how to accept - is in the first 160 characters, because the rest of a multipart SMS may never arrive."
 
-**6. The call line and the silent alert**
-Visual: IVR transcript from the simulator; the "9" key highlighted.
-*Say:* "Speak in English or Kiswahili. Get a reference number read back. If you can't talk safely, press 9: the call drops in one second and the call log shows a misdial, but a responder has already been paged."
+**6. The call line**
+Visual: the call transcript from the simulator - the line's questions and the caller's answers, with the responder alert firing after the first sentence.
+*Say:* "There is no menu. The line answers, listens, and asks one question at a time, the way an emergency call is taken - and it alerts a responder from her first sentence, not at the end of the call. It only asks what changes what a responder does. Consent is spoken, not keyed. And if she says nothing at all, that is not a failed call: it becomes a silent critical alert. The model chooses the questions; every fact she hears is reviewed text, and any generated line containing a digit is refused, so the line cannot invent a helpline number."
 
 **7. AI structures, humans decide**
 Visual: raw Kiswahili/Sheng SMS on the left -> structured brief on the right (type, urgency, 72h flag, risk flags, EN+SW summary).
@@ -53,5 +53,5 @@ Visual: ward-level heat map mock (aggregate counts only).
 *Say:* "County GBV working groups get anonymised ward-level patterns - never a case. That is the accountability layer."
 
 **12. Roadmap and ask**
-Pilot: two Nairobi responder networks + one GBV Recovery Centre; metric: time-to-accept (already measured in the console) and survivor-reported outcomes. Then recorded Kiswahili prompts and three more languages, a live voice number, telco zero-rating, WhatsApp, responder accounts.
-*Say:* "The code runs today on a KSh 0 phone. What it needs next is a community to run it with. Asante."
+Pilot: two Nairobi responder networks + one GBV Recovery Centre; metrics: time-to-accept (already measured in the console), time-to-contact, and survivor-reported outcomes. Then a real-time Kiswahili voice and three more languages, a live voice number, telco zero-rating, WhatsApp, responder accounts.
+*Say:* "The code runs today on the cheapest phone in Kenya. What it needs next is a community to run it with. Asante."
