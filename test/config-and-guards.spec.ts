@@ -2,7 +2,7 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { TokenGuard } from '../src/api/token.guard';
 import { WebhookGuard } from '../src/channels/webhook.guard';
 import { CryptoService } from '../src/common/crypto.service';
-import { assertProductionConfig, dashboardToken, productionConfigProblems, trustProxySetting } from '../src/config/env';
+import { assertProductionConfig, dashboardToken, demoSignInEnabled, productionConfigProblems, trustProxySetting } from '../src/config/env';
 
 const KEY = 'a'.repeat(64);
 const SECRET = 's'.repeat(40);
@@ -36,6 +36,14 @@ describe('production configuration', () => {
   it('only has a demo console token outside production', () => {
     expect(dashboardToken({})).toBe('demo-token');
     expect(dashboardToken({ NODE_ENV: 'production' })).toBe('');
+  });
+
+  it('opens the console without credentials outside production, and never in it', () => {
+    expect(demoSignInEnabled({})).toBe(true);
+    expect(demoSignInEnabled({ NODE_ENV: 'demo', DASHBOARD_TOKEN: 't'.repeat(40) })).toBe(true);
+    expect(demoSignInEnabled({ NODE_ENV: 'production' })).toBe(false);
+    expect(demoSignInEnabled({ NODE_ENV: 'production', DASHBOARD_TOKEN: 't'.repeat(40) })).toBe(false);
+    expect(demoSignInEnabled(ready)).toBe(false);
   });
 
   it('trusts only a local proxy by default', () => {

@@ -255,6 +255,30 @@
         ]
       }
     },
+    "/api/demo-access": {
+      "get": {
+        "operationId": "ApiController_demoAccess",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "demo": true,
+                    "token": "demo-token"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "console"
+        ]
+      }
+    },
     "/api/status": {
       "get": {
         "operationId": "ApiController_status",

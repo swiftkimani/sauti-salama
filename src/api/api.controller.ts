@@ -13,6 +13,7 @@ import { Case } from '../entities/case.entity';
 import { ResourcesService } from '../resources/resources.service';
 import { RespondersService } from '../responders/responders.service';
 import { VoiceService } from '../channels/voice/voice.service';
+import { dashboardToken, DEMO_TOKEN, demoSignInEnabled } from '../config/env';
 import { ActorDto, ListCasesQuery, RefParam, ResolveDto } from './api.dto';
 import { TokenGuard } from './token.guard';
 
@@ -43,6 +44,16 @@ export class ApiController {
     const ok = await this.db.query('SELECT 1').then(() => true, () => false);
     res.status(ok ? 200 : 503);
     return { ok };
+  }
+
+  /**
+   * Public: may the console open without credentials? Outside production this hands out the console token, so the
+   * PoC link opens straight into the console; with NODE_ENV=production it always answers no and the token stays secret.
+   */
+  @Get('demo-access') @SkipThrottle()
+  @ApiOkResponse({ schema: { example: { demo: true, token: DEMO_TOKEN } } })
+  demoAccess() {
+    return demoSignInEnabled() ? { demo: true, token: dashboardToken() } : { demo: false };
   }
 
   /** Configuration and readiness for the console. Behind the token: it describes how the line is set up. */

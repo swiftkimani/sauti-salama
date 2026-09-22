@@ -8,7 +8,10 @@ export const isProduction = (env: NodeJS.ProcessEnv = process.env) => env.NODE_E
 const HEX64 = /^[0-9a-fA-F]{64}$/;
 export const isEncryptionKey = (v: string | undefined) => !!v && HEX64.test(v);
 
-const DEV_DEFAULTS = ['demo-token', 'change-me-to-a-long-random-string'];
+/** The console token of a demo deployment. It is printed in the README and in .env.example, so it is never a secret. */
+export const DEMO_TOKEN = 'demo-token';
+
+const DEV_DEFAULTS = [DEMO_TOKEN, 'change-me-to-a-long-random-string'];
 const strongSecret = (v: string | undefined) => !!v && v.length >= 32 && !DEV_DEFAULTS.includes(v);
 
 /** Everything that must be fixed before the server may run in production. Empty means ready. */
@@ -31,7 +34,15 @@ export function assertProductionConfig(env: NodeJS.ProcessEnv = process.env): vo
 }
 
 /** The console token. The demo value only exists outside production; in production an unset token matches nothing. */
-export const dashboardToken = (env: NodeJS.ProcessEnv = process.env): string => env.DASHBOARD_TOKEN || (isProduction(env) ? '' : 'demo-token');
+export const dashboardToken = (env: NodeJS.ProcessEnv = process.env): string => env.DASHBOARD_TOKEN || (isProduction(env) ? '' : DEMO_TOKEN);
+
+/**
+ * May the console open without credentials? Only outside production, where this is a proof of concept and the
+ * console token is demo-grade anyway: `webhook.guard.ts` already accepts it as a webhook key there, and the
+ * README publishes it. Such a deployment hands the token to anyone who opens the page (GET /api/demo-access),
+ * which is what makes the live PoC link open with no sign-in. With NODE_ENV=production the answer is always no.
+ */
+export const demoSignInEnabled = (env: NodeJS.ProcessEnv = process.env): boolean => !isProduction(env) && !!dashboardToken(env);
 
 /** Express "trust proxy": by default only a proxy on the same host (cloudflared, nginx) may set X-Forwarded-For. */
 export function trustProxySetting(v = process.env.TRUST_PROXY): boolean | number | string {
