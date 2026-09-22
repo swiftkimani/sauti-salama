@@ -35,6 +35,12 @@ describe('HTTP (e2e)', () => {
     expect(res.body).toEqual({ ok: true });
   });
 
+  it('hands the console token to a demo deployment, and nothing to a production one', async () => {
+    expect((await http().get('/api/demo-access').expect(200)).body).toEqual({ demo: true, token: TOKEN });
+    process.env.NODE_ENV = 'production';
+    expect((await http().get('/api/demo-access').expect(200)).body).toEqual({ demo: false });
+  });
+
   it('keeps configuration details behind the console token', async () => {
     await http().get('/api/status').expect(401);
     const res = await http().get('/api/status').set('x-dashboard-token', TOKEN).expect(200);

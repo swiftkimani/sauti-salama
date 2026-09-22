@@ -140,6 +140,11 @@
   .signin-card h1 { font-size: 21px; margin-top: 4px }
   .signin-card .lead { color: var(--text-2); font-size: 14px; margin-top: 4px }
   .signin-note { display: flex; gap: 8px; font-size: 12.5px; color: var(--text-3); padding-top: 14px; border-top: 1px solid var(--line) }
+  .signin-boot { font-size: 14px; color: var(--text-3) }
+  .signin-demo { display: flex; flex-direction: column; gap: 12px }
+  .signin-demo .hint { text-align: center }
+  .signin-or { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-3) }
+  .signin-or::before, .signin-or::after { content: ""; flex: 1; height: 1px; background: var(--line) }
 
   .reveal-number { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); flex-wrap: wrap }
   .reveal-number strong { font: 700 22px/1.2 var(--mono); letter-spacing: .02em }
@@ -203,8 +208,14 @@
 </div>
 
 <div class="signin" id="signin" hidden>
+  <p class="signin-boot" id="siBoot" hidden>Opening the console…</p>
   <form class="card signin-card" id="signinForm" novalidate>
-    <div><span id="signinLogo"></span><h1>Responder console</h1><p class="lead">Sign in to see and act on reports from survivors in your area.</p></div>
+    <div><span id="signinLogo"></span><h1>Responder console</h1><p class="lead" id="siLead">Sign in to see and act on reports from survivors in your area.</p></div>
+    <div class="signin-demo" id="signinDemo" hidden>
+      <button class="btn btn-primary btn-lg btn-block" type="button" id="siDemo">Open the demo console</button>
+      <p class="hint">Fictional cases and fictional responders. Nothing you do here reaches a real person.</p>
+      <p class="signin-or"><span>or sign in as a responder</span></p>
+    </div>
     <label class="field"><span>Your name</span><input class="input" id="siName" autocomplete="name" maxlength="80" placeholder="e.g. Amina W. (CHP)"><span class="hint">Shown in the audit log next to every action you take.</span></label>
     <label class="field"><span>Access token</span><input class="input" id="siToken" type="password" autocomplete="current-password" placeholder="Provided by your coordinator"></label>
     <p class="error-text" id="siError" role="alert" hidden></p>
@@ -872,30 +883,79 @@ function showSignin(error) {
   state.authed = false;
   $('app').inert = true;
   $('signin').hidden = false;
+  $('signinForm').hidden = false;
+  $('siBoot').hidden = true;
   $('siName').value = state.actor || '';
   $('siToken').value = '';
   $('siError').textContent = error || '';
   $('siError').hidden = !error;
   ($('siName').value ? $('siToken') : $('siName')).focus();
+  offerDemo();
 }
-$('signinForm').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const name = $('siName').value.trim(), token = $('siToken').value.trim();
-  const err = (m) => { $('siError').textContent = m; $('siError').hidden = false; };
-  if (!name) return err('Enter your name so your actions can be recorded.');
-  if (!token) return err('Enter the access token from your coordinator.');
-  const btn = $('siSubmit');
-  btn.disabled = true; btn.textContent = 'Signing in…';
+const siError = (m) => { $('siError').textContent = m; $('siError').hidden = false; };
+
+// A proof-of-concept deployment publishes its console token (/api/demo-access), so the console opens without one.
+// Where it does not - any production deployment - the endpoint says no and the form below is the only way in.
+let demoToken = '';
+async function offerDemo() {
+  if (demoToken) return true;
+  let d;
+  try { d = await (await fetch('/api/demo-access')).json(); } catch { return false; }
+  if (!d || !d.demo || !d.token) return false;
+  demoToken = d.token;
+  $('signinDemo').hidden = false;
+  $('siLead').textContent = 'A proof of concept: open it with one click, or sign in the way a responder would.';
+  $('siSubmit').classList.replace('btn-primary', 'btn-secondary');
+  $('siToken').placeholder = demoToken;
+  // Only take focus if the visitor has not started typing.
+  const at = document.activeElement;
+  if (!at || at === document.body || ((at === $('siName') || at === $('siToken')) && !at.value)) $('siDemo').focus();
+  return true;
+}
+
+/** Signs in and starts the console. Returns null on success, or the message to show. */
+async function signIn(name, token, btn) {
+  const label = btn && btn.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
   try {
     const r = await fetch('/api/cases?limit=1', { headers: { 'x-dashboard-token': token } });
-    if (r.status === 401) return err('That access token was not accepted.');
-    if (!r.ok) return err('The server could not be reached. Try again in a moment.');
-  } catch { return err('The server could not be reached. Try again in a moment.'); }
-  finally { btn.disabled = false; btn.textContent = 'Sign in'; }
+    if (r.status === 401) return 'That access token was not accepted.';
+    if (!r.ok) return 'The server could not be reached. Try again in a moment.';
+  } catch { return 'The server could not be reached. Try again in a moment.'; }
+  finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
   state.actor = name; store.set('ss.actor', name);
   state.token = token; store.set('ss.token', token, true);
   start();
+  return null;
+}
+
+$('siDemo').addEventListener('click', async () => {
+  const error = await signIn($('siName').value.trim() || DEFAULT_ACTOR, demoToken, $('siDemo'));
+  if (error) siError(error);
 });
+$('signinForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const name = $('siName').value.trim(), token = $('siToken').value.trim();
+  if (!name) return siError('Enter your name so your actions can be recorded.');
+  if (!token) return siError(demoToken ? `Enter the access token (${demoToken}), or open the demo console above.` : 'Enter the access token from your coordinator.');
+  const error = await signIn(name, token, $('siSubmit'));
+  if (error) siError(error);
+});
+
+/** No token yet: on a proof-of-concept deployment go straight in, otherwise ask for one. */
+async function enterConsole() {
+  state.authed = false;
+  $('app').inert = true;
+  $('signin').hidden = false;
+  $('signinForm').hidden = true;
+  $('siBoot').hidden = false;
+  if (await offerDemo()) {
+    const error = await signIn(state.actor || DEFAULT_ACTOR, demoToken);
+    if (!error) return;
+    return showSignin(error);
+  }
+  showSignin();
+}
 
 // Close popovers when clicking elsewhere or pressing Escape.
 document.addEventListener('click', (ev) => {
@@ -930,7 +990,7 @@ function start() {
 renderUser();
 renderQueue();
 if (state.token) start();
-else { route(); refreshHealth(); showSignin(); }
+else { route(); refreshHealth(); enterConsole(); }
 </script>
 </body>
 </html>

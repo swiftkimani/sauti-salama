@@ -39,10 +39,11 @@
   <p class="lead">Survivors call, dial a USSD code or send one SMS. A vetted community responder is alerted within seconds, and the survivor gets the right next step.</p>
 
   <div class="entry">
-    <a class="card" href="dashboard.html">
+    <a class="card" href="dashboard.html" id="consoleCard">
       <span class="empty-icon" data-icon="shieldCheck"></span>
       <h2>Responder console</h2>
       <p>See reports by urgency, read the triage brief in English and Kiswahili, follow the next-step checklist and record every action.</p>
+      <span class="hint" id="consoleHint" hidden>No credentials needed: it opens straight into the demo.</span>
       <span class="go">Open console <span data-icon="chevronRight"></span></span>
     </a>
     <a class="card" href="simulator.html">
@@ -68,6 +69,13 @@
     if (el.classList.contains('empty-icon')) el.innerHTML = UI.icon(el.dataset.icon, 'lg');
     else el.outerHTML = UI.icon(el.dataset.icon);
   }
+
+  // On a demo deployment the console token is published, so link straight in rather than asking for it.
+  fetch('/api/demo-access').then((r) => r.json()).then((d) => {
+    if (!d || !d.demo || !d.token) return;
+    document.getElementById('consoleCard').href = `dashboard.html?token=${encodeURIComponent(d.token)}`;
+    document.getElementById('consoleHint').hidden = false;
+  }).catch(() => { /* the console asks for a token, as it does anywhere else */ });
 </script>
 </body>
 </html>

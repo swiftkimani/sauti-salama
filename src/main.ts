@@ -6,7 +6,7 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { VoiceService } from './channels/voice/voice.service';
-import { assertProductionConfig, dashboardToken, isProduction, trustProxySetting } from './config/env';
+import { assertProductionConfig, dashboardToken, demoSignInEnabled, isProduction, trustProxySetting } from './config/env';
 import { buildOpenApi } from './config/openapi';
 
 async function bootstrap() {
@@ -28,7 +28,7 @@ async function bootstrap() {
   const base = `http://localhost:${port}`;
   const token = dashboardToken();
   console.log(`\nSauti Salama backend listening on ${base}`);
-  console.log(`  Responder console : ${base}/dashboard.html${token === 'demo-token' ? '?token=demo-token' : ' (sign in with DASHBOARD_TOKEN from .env)'}`);
+  console.log(`  Responder console : ${base}/dashboard.html${demoSignInEnabled() ? ' (opens without signing in)' : ' (sign in with DASHBOARD_TOKEN from .env)'}`);
   console.log(`  Channel simulator : ${base}/simulator.html`);
   if (docs) console.log(`  API docs          : ${base}/api/docs`);
 
@@ -45,6 +45,9 @@ async function bootstrap() {
   }
   if (publicBase.startsWith('https://') && token === 'demo-token') {
     console.warn('  WARNING: the server is public but DASHBOARD_TOKEN is still demo-token. Set a strong token in .env.\n');
+  }
+  if (publicBase.startsWith('https://') && demoSignInEnabled()) {
+    console.warn('  WARNING: the server is public and not in production mode, so /api/demo-access hands the console token to anyone who opens it and the console needs no sign-in. Intended for a proof of concept only: run with NODE_ENV=production to close it.\n');
   }
   if (publicBase.startsWith('https://') && !process.env.WEBHOOK_SECRET) {
     console.warn('  WARNING: the webhooks are public but WEBHOOK_SECRET is not set, so anyone can post fake reports. (With NODE_ENV=production they are refused.)\n');

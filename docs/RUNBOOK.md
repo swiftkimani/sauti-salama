@@ -76,6 +76,7 @@ pg_dump --format=custom "$DATABASE_URL" | age -r "$BACKUP_RECIPIENT" > "sauti-$(
 
 * **ENCRYPTION_KEY** cannot be rotated in place yet: there is no re-encryption tool. Losing it loses every narrative and phone number. Rotating it means writing that tool first.
 * **HASH_PEPPER** changes break status checks, erasure and follow-up matching for existing cases (their phone hashes no longer match). Do not change it on a database with open cases.
+* **NODE_ENV** decides whether the console is open. Outside production `/api/demo-access` hands `DASHBOARD_TOKEN` to anyone who opens the page, so the console needs no sign-in - that is how the public proof of concept is meant to run, and it means the token is not a secret there. `NODE_ENV=production` closes that endpoint and makes the sign-in form the only way in; rotate the token when you switch.
 * **DASHBOARD_TOKEN** and **WEBHOOK_SECRET** can be changed at any time. After changing `WEBHOOK_SECRET`, update every callback URL on Africa's Talking at once, or reports are refused.
 
 ## 7. The call line

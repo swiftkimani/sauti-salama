@@ -14,7 +14,7 @@ Built by [Benard Kimani](https://benardkimani.co.ke) as a solo entry to the **OS
 
 ## Submission package
 
-- **[Live proof of concept](https://sauti.benardkimani.co.ke)** - the running system, nothing to install: [channel simulator](https://sauti.benardkimani.co.ke/simulator.html), [responder console](https://sauti.benardkimani.co.ke/dashboard.html?token=demo-token) (console token `demo-token`), [API reference](https://sauti.benardkimani.co.ke/api/docs).
+- **[Live proof of concept](https://sauti.benardkimani.co.ke)** - the running system, nothing to install: [channel simulator](https://sauti.benardkimani.co.ke/simulator.html), [responder console](https://sauti.benardkimani.co.ke/dashboard.html) (opens straight in, no sign-in: it is a proof of concept), [API reference](https://sauti.benardkimani.co.ke/api/docs).
 - [Pitch deck](docs/Sauti-Salama-pitch-deck.pdf) (12 slides, PDF)
 - [Written summary](docs/WRITTEN_SUMMARY.md)
 - [Narrated demo](docs/demo/sauti-salama-demo-vo.mp4) (2:55, Kenyan English)
@@ -62,7 +62,7 @@ npm run build && npm start    # or: npm run dev
 Open:
 
 * **Channel simulator** - http://localhost:3000/simulator.html - a feature-phone USSD emulator, a call-line screen with keypad and recorded-report entry, an SMS chat, and the outbox that shows exactly what responders and survivors receive. It posts the same payloads Africa's Talking sends, so the demo does not depend on any third party.
-* **Responder console** - http://localhost:3000/dashboard.html?token=demo-token - cases by urgency, AI brief in English and Kiswahili, next-step checklist, consent flags, audit timeline, accept / resolve / reveal / erase.
+* **Responder console** - http://localhost:3000/dashboard.html - opens without signing in: outside `NODE_ENV=production` the console token is handed out at `/api/demo-access`, which is what makes the live proof of concept openable. In production that endpoint refuses and the sign-in form is the only way in. Cases by urgency, AI brief in English and Kiswahili, next-step checklist, consent flags, audit timeline, accept / resolve / reveal / erase.
 
 **Demo video:** [narrated, 2:55](docs/demo/sauti-salama-demo-vo.mp4) in Kenyan English, or [silent with captions, 2:11](docs/demo/sauti-salama-demo.mp4). Both use real simulator screens and fictional cases - no mock-ups. How it is built, and how to put your own voice on it: [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md).
 
