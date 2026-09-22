@@ -14,9 +14,12 @@ Built by [Benard Kimani](https://benardkimani.co.ke) as a solo entry to the **OS
 
 ## Submission package
 
+- **[Live proof of concept](https://sauti.benardkimani.co.ke)** - the running system, nothing to install: [channel simulator](https://sauti.benardkimani.co.ke/simulator.html), [responder console](https://sauti.benardkimani.co.ke/dashboard.html?token=demo-token) (console token `demo-token`), [API reference](https://sauti.benardkimani.co.ke/api/docs).
 - [Pitch deck](docs/Sauti-Salama-pitch-deck.pdf) (12 slides, PDF)
 - [Written summary](docs/WRITTEN_SUMMARY.md)
 - [Narrated demo](docs/demo/sauti-salama-demo-vo.mp4) (2:55, Kenyan English)
+
+Every case on the live instance is fictional and anyone with the link can create one. It carries no Africa's Talking or AI credentials, so triage runs the rule-based path and the outbox shows what would be sent to responders and survivors rather than sending it. Nothing reported there reaches anyone.
 
 The prototype demonstrates reporting and referral workflows, not a live emergency service. USSD/SMS charges depend on the operator; zero-rating is proposed. Application deletion cannot recall delivered SMS or remove third-party logs. HIV PEP should start as soon as possible and no later than 72 hours; other care remains important after that window.
 
@@ -45,6 +48,8 @@ Behind the channels:
 5. **Two-way "pull"**: the USSD menus and the call line return verified information (what is free, what the deadlines are, who to call) - trusted civic information people can act on, which is the hackathon's core theme.
 
 ## Quick start (2 minutes, no accounts needed)
+
+Nothing to install: the same build is running at **[sauti.benardkimani.co.ke](https://sauti.benardkimani.co.ke)**. To run it yourself:
 
 ```bash
 git clone https://github.com/swiftkimani/sauti-salama.git
