@@ -1,0 +1,60 @@
+# Deployment stack for sauti.benardkimani.co.ke when Coolify runs it.
+#
+# Use Coolify's "Raw Compose Deployment": this file already carries everything it needs, and
+# Coolify must not add its own proxy labels because the server's shared Traefik does the routing.
+# Paste the production .env into the resource's environment variables; Coolify writes them to
+# the .env file this stack reads.
+#
+# The database volume and the proxy network already exist on the server and are reused as they
+# are, so moving between the old stack and this one never copies data. The two stacks must not
+# run at the same time: two PostgreSQL servers on one data directory will corrupt it.
+name: sauti-salama
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sauti-db
+    environment:
+      POSTGRES_USER: sauti
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sauti
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sauti"]
+      interval: 5s
+      retries: 10
+    mem_limit: 1g
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: sauti-salama:latest
+    container_name: sauti-app
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://sauti:${POSTGRES_PASSWORD}@db:5432/sauti
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal, proxy_network]
+    mem_limit: 1g
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: proxy_network
+      traefik.http.routers.sauti.rule: "Host(`sauti.benardkimani.co.ke`)"
+      traefik.http.routers.sauti.entrypoints: websecure
+      traefik.http.routers.sauti.tls.certresolver: myresolver
+      traefik.http.services.sauti.loadbalancer.server.port: "3000"
+
+networks:
+  internal:
+  proxy_network:
+    external: true
+
+volumes:
+  pgdata:
+    external: true
+    name: sauti-salama_pgdata
