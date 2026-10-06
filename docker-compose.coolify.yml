@@ -41,13 +41,15 @@ services:
     networks: [internal, proxy_network]
     mem_limit: 1g
     restart: unless-stopped
+    # A list, not a map: Coolify appends its own labels in list form, and mixing the two
+    # forms makes the file invalid ("non-string key in services.app.labels").
     labels:
-      traefik.enable: "true"
-      traefik.docker.network: proxy_network
-      traefik.http.routers.sauti.rule: "Host(`sauti.benardkimani.co.ke`)"
-      traefik.http.routers.sauti.entrypoints: websecure
-      traefik.http.routers.sauti.tls.certresolver: myresolver
-      traefik.http.services.sauti.loadbalancer.server.port: "3000"
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy_network"
+      - "traefik.http.routers.sauti.rule=Host(`sauti.benardkimani.co.ke`)"
+      - "traefik.http.routers.sauti.entrypoints=websecure"
+      - "traefik.http.routers.sauti.tls.certresolver=myresolver"
+      - "traefik.http.services.sauti.loadbalancer.server.port=3000"
 
 networks:
   internal:
