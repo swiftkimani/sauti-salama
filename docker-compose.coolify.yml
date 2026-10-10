@@ -23,7 +23,12 @@ services:
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sauti"]
-      interval: 5s
+      # Every 5 seconds only while starting, then every 30: each check starts a process in the
+      # container, and 5-second checks across the server added up to a noticeable share of a
+      # CPU core.
+      interval: 30s
+      start_interval: 5s
+      start_period: 60s
       retries: 10
     mem_limit: 1g
     restart: unless-stopped
