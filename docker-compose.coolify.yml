@@ -52,8 +52,8 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_network"
       - "traefik.http.routers.sauti.rule=Host(`sauti.benardkimani.co.ke`)"
-      - "traefik.http.routers.sauti.entrypoints=websecure"
-      - "traefik.http.routers.sauti.tls.certresolver=myresolver"
+      - "traefik.http.routers.sauti.entrypoints=https"
+      - "traefik.http.routers.sauti.tls.certresolver=letsencrypt"
       - "traefik.http.services.sauti.loadbalancer.server.port=3000"
 
 networks:
